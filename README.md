@@ -22,4 +22,4 @@ Versió 29. Llengua de la interfície: català, en fase inicial.
 
 ## Llicència
 
-AGPL-3.0-only. Vegeu `LICENSE`. Els components de tercers, amb les seves llicències, són a `dist/third-party-skp.txt`.
+AGPL-3.0-only. Copyright (C) 2026 subi2 i col·laboradors de guaitaBIMup. Text complet a `LICENSE`. Els components de tercers, amb les seves llicències, són a `dist/third-party-skp.txt`.
