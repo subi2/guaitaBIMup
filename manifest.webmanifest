@@ -1,0 +1,14 @@
+{
+  "name": "guaitaBIMup",
+  "short_name": "guaitaBIMup",
+  "description": "Modelador 3D tipus SketchUp amb eines BIM (Guaita Apps)",
+  "lang": "ca",
+  "start_url": "./guaitaBIMup.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1B1D21",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

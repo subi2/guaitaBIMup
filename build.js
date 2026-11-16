@@ -9,7 +9,7 @@ ${lic}
 <html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup 29</title>
 <style>
 ${r('src/style.css')}
-</style></head><body>
+</style><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script></head><body>
 ${r('src/body.html')}
 <script>/* three.js r160 — MIT License — Copyright © 2010-2023 three.js authors */
 ${r('dist/three.bundle.js').replace(/<\/script/g,'<\\/script')}
