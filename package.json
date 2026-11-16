@@ -1,0 +1,19 @@
+{
+  "name": "guaitabimup",
+  "version": "1.0.0",
+  "description": "Modelador 3D tipus SketchUp amb eines BIM (guaita Apps)",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.160.0"
+  }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>guaitaBIMup — Ajuda</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1d1d1f; }
+h1 { margin-bottom: .2rem; }
+kbd { background: #f1f1f4; border: 1px solid #c9c9d0; border-radius: 4px; padding: 0 .3em; font-size: .9em; }
+table { border-collapse: collapse; margin: .5rem 0 1rem; }
+td, th { border: 1px solid #d6d6dc; padding: .3rem .6rem; text-align: left; vertical-align: top; }
+footer { margin-top: 2rem; font-size: .85rem; color: #666; }
+</style>
+</head>
+<body>
+<h1>guaitaBIMup</h1>
+<p>Ajuda d'ús. Aquesta pàgina descriu les funcions principals; el programa és a <code>guaitaBIMup.html</code>.</p>
+
+<h2>Navegació</h2>
+<table>
+<tr><th>Acció</th><th>Com</th></tr>
+<tr><td>Orbitar</td><td>Mantén <kbd>Opció</kbd> i arrossega (per defecte)</td></tr>
+<tr><td>Desplaçar</td><td>Mantén <kbd>Command</kbd> i arrossega (per defecte)</td></tr>
+<tr><td>Zoom</td><td>Mantén <kbd>Control</kbd> i arrossega, o usa la roda</td></tr>
+</table>
+<p>Les tecles de navegació es poden canviar a Opcions › Navegació. Amb Magic Mouse, arrossega amb un dit mantenint la tecla triada.</p>
+
+<h2>Dibuix i snaps</h2>
+<p>Quan dibuixes, el programa mostra un punt de color sobre el punt detectat. Cada color correspon a un tipus de snap:</p>
+<ul>
+<li><strong>Final:</strong> vèrtex d'una vora.</li>
+<li><strong>Punt mig:</strong> centre d'una vora.</li>
+<li><strong>Intersecció de vores:</strong> creuament de dues vores.</li>
+<li><strong>Intersecció amb eix:</strong> vora que talla un eix.</li>
+<li><strong>Intersecció amb el pla de treball:</strong> vora que talla el pla de treball.</li>
+</ul>
+<p>Prem <kbd>Tab</kbd> per recórrer els snaps propers al cursor. El magnetisme dels eixos es pot ajustar a Opcions › Magnetisme.</p>
+
+<h2>Elements BIM</h2>
+<ul>
+<li><strong>Murs:</strong> amb alçada, nivell i gruix.</li>
+<li><strong>Forjats, columnes i cobertes.</strong></li>
+<li><strong>Escales:</strong> rectes, en L i en U. Amb replans automàtics o fixats per comptador o alçada. Les tecles <kbd>I</kbd>, <kbd>L</kbd> i <kbd>U</kbd> canvien el tipus d'escala.</li>
+<li><strong>Components:</strong> portes i finestres que fan el forat al mur. Els eixos del component es defineixen amb dos punts.</li>
+</ul>
+
+<h2>Seccions BIM</h2>
+<p>L'eina de secció dibuixa una línia en planta. El programa crea un pla vertical que mostra l'escena a un costat i pots invertir la mirada amb el commutador de la barra de la vista. La profunditat del tall es pot limitar.</p>
+
+<h2>Estils de visualització</h2>
+<p>Pots triar un estil integrat, com <em>Línia oculta</em> o <em>Per classes IFC</em>, o crear-ne un de nou. Els estils també es poden desar a la biblioteca.</p>
+
+<h2>Exportació</h2>
+<p>El model es pot exportar a IFC i a DXF des dels menús d’exportació.</p>
+
+<footer>
+guaitaBIMup — AGPL-3.0-only. Part de la suite Guaita Apps.
+</footer>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<header>
+  <div class="brand"><span class="cells"><span style="background:#C6FF00"></span><span style="background:#FF2ECC"></span><span style="background:#00E5FF"></span><span style="background:#FFE500"></span></span><span>GUAITA<small>BIMup</small></span></div>
+  <button class="ver" id="verTag" title="Quant a guaitaBIMup"></button>
+  <nav id="menubar"></nav>
+  <div class="sp"></div>
+  <div id="fileInfo"><span class="dot"></span><span id="fileName">sense-títol.json</span><span id="fileState"></span></div>
+  <button class="btn" id="btnExport">Exporta</button>
+  <button class="btn acc" id="btnSave">Desa</button>
+</header>
+<div id="toolbar"></div>
+<div id="main">
+  <aside id="rail" aria-label="Eines"></aside>
+  <div id="viewWrap">
+    <div id="view"></div>
+    <div id="labels"></div>
+    <div id="selBox"></div>
+    <div id="tabs"></div>
+    <div id="ctxBar"><span id="ctxName"></span><button class="btn sm" id="ctxExit">Surt del grup (Esc)</button></div>
+    <div id="selBar"></div>
+    <div id="cubeBox">
+      <div id="cubeWrap"><canvas id="vcube" width="240" height="240"></canvas>
+        <button class="vca" id="vcU" style="left:49px;top:-2px" title="Gira 90° amunt" aria-label="Gira 90° amunt"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M12 5l-7 8h14z"/></svg></button><button class="vca" id="vcD" style="left:49px;bottom:-2px" title="Gira 90° avall" aria-label="Gira 90° avall"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M12 19l7-8H5z"/></svg></button><button class="vca" id="vcL" style="top:49px;left:-2px" title="Gira 90° a l’esquerra" aria-label="Gira 90° a l’esquerra"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M5 12l8-7v14z"/></svg></button><button class="vca" id="vcR" style="top:49px;right:-2px" title="Gira 90° a la dreta" aria-label="Gira 90° a la dreta"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M19 12l-8 7V5z"/></svg></button>
+        <button id="vcHome" title="Vista inicial" aria-label="Vista inicial"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg></button></div>
+      <button id="navBtn" title="Navegació, projecció i vistes"><span class="cells"><span style="background:#C6FF00"></span><span style="background:#FF2ECC"></span><span style="background:#00E5FF"></span><span style="background:#FFE500"></span></span><span id="navBtnTxt">Cònica</span><span class="dim">▾</span></button>
+      <div id="navPanel"></div>
+    </div>
+    <div id="tip"><span class="d"></span><span class="t"></span><b></b></div>
+    <div id="legend">
+      <span><i style="background:#3AA23A"></i>Final</span><span><i style="background:#00B8D4"></i>Punt mig</span>
+      <span><i style="background:#DB3B3B;border-radius:0"></i>Sobre l'aresta</span><span><i style="background:#3B6FDB;border-radius:0;transform:rotate(45deg)"></i>Sobre la cara</span>
+      <span><i style="background:#A3157F"></i>Eix de pilars</span>
+    </div>
+    <div id="toast"></div>
+  </div>
+  <aside id="tray" aria-label="Safata"></aside>
+</div>
+<footer>
+  <span id="stTool"></span><select id="lvlSel" title="Nivell de treball"></select><select id="clsSel" title="Classe IFC activa: els grups nous la hi reben"></select><label class="ag" title="Auto-agrupa: empènyer una cara crea un grup amb la classe activa"><input type="checkbox" id="autoG"> auto</label><button id="stPend" class="pend" title="Grups sense classificar: clic per seleccionar-los"></button><span id="stHint"></span>
+  <span class="mono dim" id="stInfo"></span>
+  <label for="vcb" class="lbl" id="vcbLabel">Mesures</label>
+  <input id="vcb" type="text" autocomplete="off" spellcheck="false">
+  <button class="sbs" id="sbsSig" title="Quant a guaitaBIMup">© SBS BIM Consulting · Jordi Subirós · AGPL-3.0</button>
+</footer>
+<div id="dlg"><div class="box" id="dlgBox"></div></div>
+<input type="file" id="fileInput" accept=".json,application/json" style="display:none">
