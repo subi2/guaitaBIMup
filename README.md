@@ -2,6 +2,8 @@
 
 # guaitaBIMup
 
+> **⚠️ Versió Alpha.** En desenvolupament: pot tenir errors i canviar sense avís. Fes còpies de seguretat dels models. / **⚠️ Alpha version.** Under development: may contain bugs and change without notice. Back up your models.
+
 [Català](#català) · [English](#english)
 
 ---
