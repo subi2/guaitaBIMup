@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ca" data-l="ca" data-t="d">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>guaitaBIMup · Alpha</title>
+<meta name="description" content="guaitaBIMup: modelador 3D tipus SketchUp amb eines BIM. Un sol fitxer HTML, sense núvol. / 3D modeller with BIM tools in a single HTML file, no cloud.">
+<meta property="og:title" content="guaitaBIMup">
+<meta property="og:description" content="Modelador 3D amb eines BIM · 3D modeller with BIM tools">
+<meta name="twitter:card" content="summary">
+<style>
+:root{--bg:#0b0d07;--bg2:#12160a;--card:#1c220c;--bd:#2b3313;--tx:#e6ecd2;--mut:#99a37a;--a:#D6FB41;--a2:#FF2ECC;--a3:#00E5FF;--a4:#FFE500;--on:#0b0d07}
+html[data-t=l]{--bg:#eef0e0;--bg2:#e4e8cf;--card:#fbfcf4;--bd:#c3cc98;--tx:#232814;--mut:#5d6840;--a:#6f8f00;--on:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0;background:var(--bg);opacity:.9;z-index:-1}
+.wrap{max-width:1040px;margin:0 auto;padding:0 1.2rem}
+header{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;gap:1rem;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:.6rem;font:700 14px/1 ui-monospace,Consolas,monospace;letter-spacing:.2em}
+.cells{display:grid;grid-template-columns:repeat(2,13px);gap:2px}
+.cells span{width:13px;height:13px}
+.ctl{display:flex;gap:.4rem}
+.ctl button{font:600 13px ui-monospace,Consolas,monospace;background:transparent;color:var(--mut);border:1px solid var(--bd);padding:.3rem .6rem;cursor:pointer;letter-spacing:.08em}
+.ctl button[aria-pressed=true]{color:var(--a);border-color:var(--a)}
+.hero{padding:3.5rem 0 2.5rem}
+.tag{display:inline-block;font:600 12px ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--a);border:1px solid var(--a);padding:.2rem .5rem;margin-bottom:1rem}
+h1{font-size:clamp(38px,6vw,68px);line-height:1.05;margin:0 0 .6rem;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--a)}
+.lead{font-size:19px;color:var(--mut);max-width:640px}
+.btns{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.8rem}
+.btn{font:600 14px ui-monospace,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;padding:.75rem 1.1rem;border:1px solid var(--a);color:var(--a);text-decoration:none}
+.btn.p{background:var(--a);color:var(--on)}
+.btn:hover{background:var(--a2);border-color:var(--a2);color:#fff}
+section{padding:1.8rem 0;border-top:1px solid var(--bd)}
+h2{font:700 13px ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--a);margin:0 0 .8rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
+.card{background:var(--card);border:1px solid var(--bd);padding:1rem 1.1rem}
+.card b{display:block;margin-bottom:.2rem}
+.card p{margin:0;color:var(--mut);font-size:15px}
+.warn{border:1px solid var(--a4);background:rgba(255,229,0,.08);padding:.8rem 1rem;color:var(--tx)}
+footer{padding:2rem 0 3rem;color:var(--mut);font-size:14px;border-top:1px solid var(--bd)}
+footer a{color:var(--a)}
+.sig{font:600 12px ui-monospace,Consolas,monospace;letter-spacing:.1em;color:var(--tx)}
+.sig span{color:var(--a)}
+.bar{display:flex;height:6px;margin:1.5rem 0 0}
+.bar i{flex:1}
+[data-l=ca] .en,[data-l=en] .ca{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand"><span class="cells"><span style="background:var(--a)"></span><span style="background:var(--a2)"></span><span style="background:var(--a3)"></span><span style="background:var(--a4)"></span></span><span>GUAITA<span style="color:var(--mut)"> · BIMup</span></span></div>
+  <div class="ctl">
+    <button id="bCa" aria-pressed="true">CA</button><button id="bEn" aria-pressed="false">EN</button>
+    <button id="bTh" aria-label="Tema clar/fosc · light/dark">◐</button>
+  </div>
+</header>
+
+<div class="hero">
+  <span class="tag">Alpha</span>
+  <h1>guaita<em>BIMup</em></h1>
+  <p class="lead ca">Modelador 3D tipus SketchUp amb eines BIM. Un sol fitxer HTML, sense núvol ni CDN, que funciona sense connexió.</p>
+  <p class="lead en">3D modeller in the style of SketchUp, with BIM tools. A single HTML file, no cloud and no CDN, works offline.</p>
+  <div class="btns">
+    <a class="btn p ca" href="pagescat/index.html">Obre l'aplicació</a>
+    <a class="btn p en" href="pageseng/index.html">Open the application</a>
+    <a class="btn ca" href="pagescat/HLP_guaitaBIMup-ajuda.html">Ajuda</a>
+    <a class="btn en" href="pagescat/HLP_guaitaBIMup-ajuda.html">Help</a>
+  </div>
+</div>
+
+<div class="warn" style="margin-bottom:1rem">
+  <span class="ca"><b>Versió Alpha.</b> En desenvolupament: pot tenir errors i canviar sense avís. Fes còpies de seguretat dels models.</span>
+  <span class="en"><b>Alpha version.</b> Under development: may contain bugs and change without notice. Back up your models.</span>
+</div>
+
+<section>
+  <h2 class="ca">Què fa</h2><h2 class="en">What it does</h2>
+  <div class="grid">
+    <div class="card"><b class="ca">Dibuix amb snaps</b><b class="en">Drawing with snaps</b><p class="ca">Final, punt mig, creuaments i eixos, amb punt de color.</p><p class="en">Endpoints, midpoints, crossings and axes, with a colour dot.</p></div>
+    <div class="card"><b class="ca">Eines BIM</b><b class="en">BIM tools</b><p class="ca">Murs, forjats, pilars, obertures amb forat, escales i components.</p><p class="en">Walls, slabs, columns, openings with real cuts, stairs and components.</p></div>
+    <div class="card"><b class="ca">Seccions i estils</b><b class="en">Sections and styles</b><p class="ca">Seccions BIM amb mirada invertible i estils de visualització.</p><p class="en">BIM sections with flip view and display styles.</p></div>
+    <div class="card"><b class="ca">Exportació</b><b class="en">Export</b><p class="ca">IFC i DXF. Instal·lable com a PWA.</p><p class="en">IFC and DXF. Installable as a PWA.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2 class="ca">Llicència</h2><h2 class="en">Licence</h2>
+  <p class="ca">Programari lliure sota la <a href="LICENSE" style="color:var(--a)">GNU Affero General Public License v3</a> (AGPL-3.0-only). Codi font i generació a <a href="https://github.com/subi2/guaitabimup" style="color:var(--a)">GitHub</a>.</p>
+  <p class="en">Free software under the <a href="LICENSE" style="color:var(--a)">GNU Affero General Public License v3</a> (AGPL-3.0-only). Source code and build at <a href="https://github.com/subi2/guaitabimup" style="color:var(--a)">GitHub</a>.</p>
+</section>
+
+<footer>
+  <div class="sig">SBS BIM Consulting <span>·</span> Guaita Apps <span>·</span> 2026</div>
+  <div class="bar"><i style="background:var(--a)"></i><i style="background:var(--a2)"></i><i style="background:var(--a3)"></i><i style="background:var(--a4)"></i></div>
+  <p class="ca" style="margin:.8rem 0 0">Programari tal com és, sense garanties. Consulteu la llicència per als termes.</p>
+  <p class="en" style="margin:.8rem 0 0">Software provided as is, without warranty. See the licence for terms.</p>
+</footer>
+</div>
+<script>
+(function(){
+  var h=document.documentElement;
+  var pref=localStorage.getItem('gbu-l')||'ca', th=localStorage.getItem('gbu-t')||(matchMedia('(prefers-color-scheme: light)').matches?'l':'d');
+  function setL(l){h.lang=l;h.dataset.l=l;document.getElementById('bCa').setAttribute('aria-pressed',l==='ca');document.getElementById('bEn').setAttribute('aria-pressed',l==='en');localStorage.setItem('gbu-l',l);}
+  function setT(t){h.dataset.t=t;localStorage.setItem('gbu-t',t);}
+  setL(pref);setT(th);
+  document.getElementById('bCa').onclick=function(){setL('ca')};
+  document.getElementById('bEn').onclick=function(){setL('en')};
+  document.getElementById('bTh').onclick=function(){setT(h.dataset.t==='l'?'d':'l')};
+})();
+</script>
+</body>
+</html>

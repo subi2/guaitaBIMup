@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>guaitaBIMup · Alpha (English)</title>
+<style>
+:root{--bg:#0b0d07;--card:#1c220c;--bd:#2b3313;--tx:#e6ecd2;--mut:#99a37a;--a:#D6FB41;--a4:#FFE500;--on:#0b0d07}
+html[data-t=l]{--bg:#eef0e0;--card:#fbfcf4;--bd:#c3cc98;--tx:#232814;--mut:#5d6840;--a:#6f8f00;--on:#fff}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:2rem 1.2rem}
+h1{font-size:44px;margin:.4rem 0;letter-spacing:-.02em}h1 em{font-style:normal;color:var(--a)}
+.tag{display:inline-block;font:600 12px ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--a);border:1px solid var(--a);padding:.2rem .5rem}
+.warn{border:1px solid var(--a4);background:rgba(255,229,0,.08);padding:.8rem 1rem;margin:1.2rem 0}
+.btn{display:inline-block;font:600 14px ui-monospace,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;padding:.75rem 1.1rem;border:1px solid var(--a);color:var(--a);text-decoration:none;margin:.4rem .4rem .4rem 0}
+.btn.p{background:var(--a);color:var(--on)}
+a{color:var(--a)}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--bd);color:var(--mut);font-size:14px;font-family:ui-monospace,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag">Alpha</span>
+  <h1>guaita<em>BIMup</em></h1>
+  <p>3D modeller in the style of SketchUp, with BIM tools. A single HTML file, no cloud and no CDN.</p>
+  <div class="warn"><b>Alpha version.</b> Under development: may contain bugs and change without notice. Back up your models.</div>
+  <p><b>The English interface is not ready yet.</b> The application is currently in Catalan only. You can use it here:</p>
+  <a class="btn p" href="../pagescat/index.html">Open the application (Català)</a>
+  <a class="btn" href="../pagescat/HLP_guaitaBIMup-ajuda.html">Help (Català)</a>
+  <p style="margin-top:1.5rem">Licence: <a href="../LICENSE">GNU Affero General Public License v3</a> (AGPL-3.0-only). Source: <a href="https://github.com/subi2/guaitabimup">GitHub</a>.</p>
+  <footer>SBS BIM Consulting · Guaita Apps · 2026<br>Software provided as is, without warranty.</footer>
+</div>
+<script>if(matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.t='l';else document.documentElement.dataset.t='d';</script>
+</body>
+</html>
