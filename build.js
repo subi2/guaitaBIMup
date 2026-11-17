@@ -42,7 +42,7 @@ ${r('src/app-grip.js')}
 ${r('src/app-doc.js')}
 ${r('src/app-ui.js')}
 </script></body></html>`;
-fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/guaitaBIMup 29.html',html);
+fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/guaitaBIMup_v0.29.html',html);
 // extreu JS per a node --check
 fs.writeFileSync('out/_app.js',html.split('<script>').slice(2).join('').replace(/<\/script>[\s\S]*$/,''));
 console.log('OK',(html.length/1024|0)+' kb');
