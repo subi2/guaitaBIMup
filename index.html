@@ -17,8 +17,7 @@ body::before{content:"";position:fixed;inset:0;background:var(--bg);opacity:.9;z
 .wrap{max-width:1040px;margin:0 auto;padding:0 1.2rem}
 header{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;gap:1rem;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:.6rem;font:700 14px/1 ui-monospace,Consolas,monospace;letter-spacing:.2em}
-.cells{display:grid;grid-template-columns:repeat(2,13px);gap:2px}
-.cells span{width:13px;height:13px}
+.roof{width:30px;height:30px;display:block;flex:none}
 .ctl{display:flex;gap:.4rem}
 .ctl button{font:600 13px ui-monospace,Consolas,monospace;background:transparent;color:var(--mut);border:1px solid var(--bd);padding:.3rem .6rem;cursor:pointer;letter-spacing:.08em}
 .ctl button[aria-pressed=true]{color:var(--a);border-color:var(--a)}
@@ -50,7 +49,7 @@ footer a{color:var(--a)}
 <body>
 <div class="wrap">
 <header>
-  <div class="brand"><span class="cells"><span style="background:var(--a)"></span><span style="background:var(--a2)"></span><span style="background:var(--a3)"></span><span style="background:var(--a4)"></span></span><span>GUAITA<span style="color:var(--mut)"> · BIMup</span></span></div>
+  <div class="brand"><svg class="roof" viewBox="130 130 252 252" aria-hidden="true"><g transform="translate(256 256) scale(0.8) translate(-256 -256)"><polygon points="110,250 250,250 250,110 110,170" style="fill:var(--a)"/><polygon points="262,250 402,250 402,170 262,110" style="fill:var(--a2)"/><rect x="110" y="262" width="140" height="140" style="fill:var(--a3)"/><rect x="262" y="262" width="140" height="140" style="fill:var(--a4)"/></g></svg><span>GUAITA<span style="color:var(--mut)"> · BIMup</span></span></div>
   <div class="ctl">
     <button id="bCa" aria-pressed="true">CA</button><button id="bEn" aria-pressed="false">EN</button>
     <button id="bTh" aria-label="Tema clar/fosc · light/dark">◐</button>
