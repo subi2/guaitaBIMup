@@ -127,7 +127,7 @@ function makeWall(a, b) {
 TOOLS.wall = {
   move(ev, mx, my) {
     const pk = pick(mx, my, { from: st.from, lock: LOCK }); st.pk = pk; clearPrev();
-    if (st.from) { const L = V.dist(st.from, pk.p); prevLine([st.from, pk.p], 0x1B1D21); showTip(mx, my, pk, fmtM(L) + ' · gruix ' + fmt(OPT.wallT)); $('vcb').value = fmt(OPT.wallT); }
+    if (st.from) { const L = V.dist(st.from, pk.p); prevLine([st.from, pk.p], pk.axis != null ? AX_COL[pk.axis] : 0x1B1D21); showTip(mx, my, pk, fmtM(L) + ' · gruix ' + fmt(OPT.wallT)); $('vcb').value = fmt(OPT.wallT); }
     else showTip(mx, my, pk);
   },
   down(ev, mx, my) {

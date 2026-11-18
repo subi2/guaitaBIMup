@@ -1,0 +1,36 @@
+from playwright.sync_api import sync_playwright
+URL = "file:///home/claude/g3d/out/guaitaBIMup%2024.html?nou"
+res = {"ok": 0, "fail": 0}
+def chk(c, msg):
+    res["ok" if c else "fail"] += 1; print(("OK  " if c else "FAIL") + " " + msg)
+with sync_playwright() as p:
+    b = p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"])
+    pg = b.new_page(viewport={"width":1400,"height":860})
+    errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.goto(URL); pg.wait_for_timeout(800)
+    ev = lambda s: pg.evaluate(s)
+    chk(ev("VERSION")=="24", "la v11 base carrega (VERSION actual)")
+    ev("createLevel(3.0)")
+    ev("S.level = S.model.levels.slice().sort((a,b)=>a.elev-b.elev)[0].id; setLevel(S.level)")
+    ev("makeSlab([0,0,0],[5,5,0])")
+    sl = ev("(()=>{const g=[...S.model.root.groups.values()].filter(g=>g.par&&g.par.type==='slab')[0];let mn=1e9,mx=-1e9;for(const f of g.faces.values())for(const v of f.loop){const p=g.verts.get(v).p;mn=Math.min(mn,p[2]);mx=Math.max(mx,p[2]);}return [mn,mx,solidVolume(g),g.ifc];})()")
+    chk(abs(sl[0]+0.2)<1e-6 and abs(sl[1])<1e-6, "forjat entre -0.20 i 0 respecte al nivell %s" % sl[:2])
+    chk(abs(sl[2]-5.0)<1e-3 and sl[3]=='IfcSlab', "volum del forjat 5.0 m3 i classe IfcSlab (%.4f)" % sl[2])
+    ev("makeColumn([1,1,0])")
+    col = ev("(()=>{const g=[...S.model.root.groups.values()].filter(g=>g.par&&g.par.type==='column')[0];return [solidVolume(g), g.ifc];})()")
+    chk(abs(col[0]-0.48)<1e-3 and col[1]=='IfcColumn', "pilar 0.40×0.40×(altura fins al nivell superior) i IfcColumn (%.4f)" % col[0])
+    ev("makeWall([0,10,0],[4,10,0])")
+    W = "[...S.model.root.groups.values()].filter(g=>g.par&&g.par.type==='wall').slice(-1)[0]"
+    v0 = ev("solidVolume(%s)" % W)
+    chk(abs(v0-3.6)<1e-3, "mur 4 m × 0.30 × 3 m = 3.6 m3 (%.4f)" % v0)
+    ev("addOpening(%s,[2,10,0],1.0,2.0,0.5,'IfcWindow')" % W)
+    v1 = ev("solidVolume(%s)" % W)
+    chk(abs((v0-v1)-0.6)<1e-3, "obertura resta 1.0×0.3×2.0 = 0.6 m3 dinàmicament (%.4f)" % (v0-v1))
+    ev("editLevel(S.model.levels.slice().sort((a,b)=>a.elev-b.elev)[1], null, 3.5)")
+    v2 = ev("solidVolume(%s)" % W)
+    chk(abs(v2-(4*0.3*3.5-0.6))<1e-3, "en canviar el nivell superior el mur i el forat es regeneren (%.4f)" % v2)
+    rt = ev("(()=>{const m=K.fromJSON(JSON.parse(JSON.stringify(K.toJSON(S.model))));return [...m.root.groups.values()].filter(g=>g.par).map(g=>g.par.type).join(',');})()")
+    chk('wall' in rt and 'slab' in rt and 'column' in rt, "els paràmetres es desen (%s)" % rt)
+    chk(not errs, "sense errors de JS %s" % errs)
+    print("RESULTAT %d ok %d fail" % (res["ok"], res["fail"]))
+    b.close()

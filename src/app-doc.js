@@ -13,7 +13,7 @@ function docViews() {
 }
 function docView(key) {
   const [t, id] = key.split(':'), mk = (name, o, dir, cut, far, kind) => { const u = Math.abs(dir[2]) > 0.99 ? [1, 0, 0] : V.norm(V.cross(dir, [0, 0, 1])); return { key, name, o, dir, u, v: V.cross(u, dir), cut, far, kind }; };
-  if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); return l ? mk('Planta · ' + l.name, [0, 0, l.elev + 1.2], [0, 0, -1], true, 1.3, 'plan') : null; }
+  if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); return l ? mk('Planta · ' + l.name, [0, 0, l.elev + vrOf(l).cut], [0, 0, -1], true, vrFar(l), 'plan') : null; }
   if (t === 'elev') { const e = ELEVS.find(x => x[0] === id), d = { S: [0, 1, 0], N: [0, -1, 0], E: [-1, 0, 0], O: [1, 0, 0] }[id]; return e ? mk(e[1], [0, 0, 0], d, false, Infinity, 'elev') : null; }
   if (t === 'sec') { const g = S.model.grids.find(x => String(x.id) === id); if (!g) return null; const d = V.norm([g.b[0] - g.a[0], g.b[1] - g.a[1], 0]); return mk('Secció · eix ' + g.name, [g.a[0], g.a[1], 0], [-d[1], d[0], 0], true, Infinity, 'sec'); }
   if (t === 'cut') { const s = (S.model.sections || []).find(x => String(x.id) === id); if (!s) return null; const n = V.norm(s.flip ? V.mul(s.n, -1) : s.n), hz = Math.abs(n[2]) > 0.99; return mk('Secció · ' + s.name, hz ? s.o.slice() : [s.o[0], s.o[1], 0], V.mul(n, -1), true, Infinity, hz ? 'plan' : 'sec'); }

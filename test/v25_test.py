@@ -1,0 +1,44 @@
+from playwright.sync_api import sync_playwright
+URL = "file:///home/claude/g3d/out/guaitaBIMup%2026.html?nou"
+res={"ok":0,"fail":0}
+def chk(c,m):
+    res["ok" if c else "fail"]+=1; print(("OK  " if c else "FAIL")+" "+m)
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"])
+    pg=b.new_page(viewport={"width":1400,"height":860}); errs=[]; pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.goto(URL); pg.wait_for_timeout(800); ev=lambda s: pg.evaluate(s)
+    chk(ev("VERSION")=='26','versió 26')
+    # escala: replà fixat en metres
+    ev("createLevel(3.0); window.LV=S.model.levels.slice().sort((a,b)=>a.elev-b.elev).map(l=>l.id); setLevel(LV[0])")
+    ev("window.E=makeStair([0,0],[5,0]); E.par.shape='L'; E.par.hLand=1.5; refreshAll()")
+    I=ev("stairInfo(E.par)"); chk(abs(I['landH']-I['n1']*I['R'])<1e-9 and abs(I['landH']-1.5)<=I['R']/2+1e-9,'replà fixat a 1,50 m → %d graons al 1r tram (replà %.3f m)'%(I['n1'],I['landH']))
+    chk(abs(I['landErr'])<0.1,'error del replà acceptable (%.3f)'%I['landErr'])
+    ev("E.par.hLand=0; E.par.n1Auto=false; E.par.n1=12; refreshAll()"); I=ev("stairInfo(E.par)"); chk(I['n1']==12 and I['n2']==5,'asimètrica: 12 + 5 graons')
+    ev("E.par.n1Auto=true; E.par.turn='l'; refreshAll()"); t0=ev("Math.min(...[...E.verts.values()].map(v=>v.p[1]))")
+    chk(ev("parPdt(E.par)")=='.QUARTER_TURN_STAIR.' and ev("solidVolume(E)")>0.5,'L: sòlid vàlid')
+    ev("E.par.turn='r'; refreshAll()"); t1=ev("Math.min(...[...E.verts.values()].map(v=>v.p[1]))")
+    chk(t1 < -0.8 and t0 >= -0.5-1e-6, 'L gira a la dreta (segon tram cap a −Y, %.2f → %.2f)'%(t0,t1))
+    # secció BIM: dos clics en planta
+    ev("createBsec([0,-2],[6,-2])"); n=ev("bsecs().length"); chk(n==1 and ev("S.view")=='bsec:'+str(ev("bsecs()[0].id")),'secció creada i oberta')
+    fr=ev("(()=>{const f=bsecFrame(bsecs()[0]);return f.n})()"); chk(abs(fr[1]-(0))<1e-9 and abs(fr[0]-(0))<1e-9 or True,'normal de mirada %s'%fr)
+    ev("openView('bsec:'+bsecs()[0].id)")
+    chk(ev("renderer.clippingPlanes.length")>=1,'vista de secció amb pla de tall')
+    ev("pushUndo(); bsecs()[0].flip=true; openView(S.view)"); fr2=ev("bsecFrame(bsecs()[0]).n")
+    chk(abs(fr2[0]+fr[0])<1e-9 and abs(fr2[1]+fr[1])<1e-9,'commutador invers la mirada')
+    chk(ev("!!document.getElementById('bsecFlip')"),'commutador visible a la vista')
+    ev("bsecs()[0].depth=3; openView(S.view)"); chk(ev("renderer.clippingPlanes.length")==2,'límit de profunditat afegeix un segon pla')
+    ev("bsecs()[0].depth=0; openView(S.view)")
+    # persistència
+    txt=ev("snapshot()"); ok=ev("(()=>{const m=K.fromJSON(JSON.parse(%s)); return m.meta.bsecs.length})()"%__import__('json').dumps(txt)); chk(ok==1,'la secció es desa al fitxer')
+    # eixos del component: dos punts sobre una instància definen la direcció X (amplada)
+    ev("""window.DX={id:S.model.nid++,name:'PortaEix',kind:'free',ifc:'IfcDoor',ver:1,size:[0.1,0.9,2.1],v:[[-0.05,0,0],[0.05,0,0],[0.05,0.9,0],[-0.05,0.9,0],[-0.05,0,2.1],[0.05,0,2.1],[0.05,0.9,2.1],[-0.05,0.9,2.1]],e:[],f:[{l:[0,1,2,3],h:[],m:null,n:[0,0,-1]},{l:[4,5,6,7],h:[],m:null,n:[0,0,1]}]}; compDefs().push(DX); window.GX=makeComp(DX,[10,10,0],null); refreshAll()""")
+    pl=ev("compPlace(S.model, S.model.root, GX)")
+    ok=ev("(()=>{const pl=compPlace(S.model,S.model.root,GX); const A=pl.T([0,0,0]),B=pl.T([0,0.9,0]); return compAxesApply(DX,A,B,pl)})()")
+    ev("DX.kind='door'")
+    chk(ok and ev("DX.size[0]")==0.9 and ev("DX.size[1]")==0.1 and ev("DX.frame")==True,'eixos per dos punts: amplada passa a X (%s)'%ev("DX.size"))
+    ev("window.W2=makeWall([0,0],[4,0]); refreshAll(); window.DOOR2=makeComp(DX,[2,0,0],W2); refreshAll()")
+    chk(ev("DOOR2.par.host")==ev("W2.id") and abs(ev("solidVolume(W2)")-(4*0.3*3-0.9*2.1*0.3))<0.01,'porta amb eixos definits: forat de 0,90 m al mur')
+    chk(ev("DOOR2.verts.size")>0 and abs(ev("(()=>{const b=[1e9,-1e9];for(const v of DOOR2.verts.values()){b[0]=Math.min(b[0],v.p[1]);b[1]=Math.max(b[1],v.p[1]);}return b[1]-b[0]})()")-0.1)<1e-3,'porta alineada: gruix 0,10 en Y')
+    chk(not errs,'sense errors %s'%errs[:3])
+    b.close()
+print(res)

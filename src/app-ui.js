@@ -25,6 +25,13 @@ const G = {
   poly: ['', 'M12 3l8 6-3 10H7L4 9z', 'M12 3l8 6-3 10H7L4 9z', []],
   arc: ['M4 18h16', 'M4 18Q12 2 20 18', '', [[4, 18], [20, 18]]],
   pushpull: ['M4 18l8-3 8 3-8 3zM4 18v-6M20 18v-6M12 21v-6', 'M4 12l8-3 8 3-8 3zM12 7V1.5M9.5 4L12 1.5 14.5 4', 'M4 12l8-3 8 3-8 3z', []],
+  copy: ['', 'M8 8h11v11H8zM5 16V5h11', '', []],
+  trim: ['', 'M3 5h10M3 19h10M16 3v18', '', []],
+  split: ['', 'M4 12h16M12 6v12', '', []],
+  mirror: ['', 'M12 3v18M4 6l5 6-5 6M20 6l-5 6 5 6', '', []],
+  align: ['', 'M4 6h16M6 18h4M14 18h4', '', []],
+  join: ['', 'M4 6h6v12h10', '', []],
+  lineoff: ['', 'M4 6h16M4 18h16', '', []],
   move: ['M12 3v18M3 12h18', 'M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3', '', []],
   offset: ['M5 6h14v12H5z', 'M9 10h6v4H9z', '', []],
   tape: ['M3 17l12-12 4 4L7 21z', 'M6 14l2 2M9 11l2 2M12 8l2 2', '', []],
@@ -60,7 +67,7 @@ const G = {
   pmil: ['M5 12h10v8H5z', 'M5 12l5-6h10l-5 6M15 12l5-6', '', []],
 };
 function ico(name, cls) {
-  const g = G[name]; if (!g) return '';
+  const g = G[name] || G[{ dim: 'dimension', protr: 'protractor' }[name]]; if (!g) return '';
   let s = '<svg viewBox="0 0 24 24" aria-hidden="true">';
   if (g[2]) s += '<path class="f" d="' + g[2] + '"/>';
   if (g[0]) s += '<path class="g" d="' + g[0] + '"/>';
@@ -104,6 +111,13 @@ const TOOLINFO = {
   poly: ['Polígon', 'G', 'Clic al centre i al radi · escriu «6s» per canviar els costats.'],
   arc: ['Arc', 'A', 'Dos punts de la corda i un tercer pel bombament.'],
   pushpull: ['Empeny/Estira', 'P', 'Clic a una cara, mou i clic · escriu la distància i Intro.'],
+  copy: ['Copia', '', 'Selecciona, clic al punt base i al destí · escriu distància o «x3».'],
+  trim: ['Retalla/estén', 'TR', 'Clica la línia límit i després l’extrem a retallar o estendre.'],
+  split: ['Divideix', 'SP', 'Clica la línia i el punt on dividir-la.'],
+  mirror: ['Emmiralla', 'MM', 'Clica l’eix (una línia), selecciona les línies i clica per copiar-les reflectides.'],
+  align: ['Alinea', 'AL', 'Clica la línia de referència i després la línia a alinear.'],
+  join: ['Uneix', 'JO', 'Clica dues línies que es creuen per unir-les en un vèrtex comú.'],
+  lineoff: ['Desfasa línia', 'OF', 'Clica la línia, mou el cursor al costat i clica (o escriu la distància).'],
   move: ['Mou/Copia', 'M', 'Selecciona, clic al punt base i al destí · Ctrl: copia · escriu distància o «x3».'],
   offset: ['Equidistància', 'F', 'Clic a una cara i arrossega per crear el contorn paral·lel.'],
   tape: ['Cinta mètrica', 'T', 'Clic a dos punts per mesurar la distància.'],
@@ -115,35 +129,20 @@ const TOOLINFO = {
   grid: ['Eix de pilars', 'GR', 'Clic al punt inicial i al final · escriu una distància per crear-ne un de paral·lel.'],
   ifc: ['Classifica IFC', 'I', 'Clic a un grup o cara per assignar-hi la classe IFC activa · Alt: recull la classe.'],
 };
-const KEYMAP = { u: 'wall', q: 'rotate', s: 'scale', w: 'followme', d: 'dim', j: 'protr', x: 'text', n: 'section', y: 'zoomwin', v: 'rrect', k: 'freehand', ' ': 'select', e: 'eraser', b: 'paint', l: 'line', r: 'rect', c: 'circle', g: 'poly', a: 'arc', p: 'pushpull', m: 'move', f: 'offset', t: 'tape', o: 'orbit', h: 'pan', z: 'zoom', i: 'ifc' };
-const TOOLBAR = [['select', 'eraser', 'paint'], ['line', 'freehand', 'rect', 'rrect', 'circle', 'poly', 'arc'], ['pushpull', 'move', 'rotate', 'scale', 'followme', 'offset'], ['tape', 'dim', 'protr', 'text', 'section'], ['orbit', 'pan', 'zoom', 'zoomwin'], ['level', 'grid', 'refplane', 'wall', 'column', 'slab', 'roof', 'stair', 'opening', 'comp', 'bsec', 'matf', 'pad', 'strip', 'ifc']];
-const RAIL = [['Selecció', ['select', 'eraser', 'paint']], ['Dibuix', ['line', 'freehand', 'rect', 'rrect', 'circle', 'poly', 'arc']], ['Modificació', ['pushpull', 'move', 'rotate', 'scale', 'followme', 'offset']], ['Mesura', ['tape', 'dim', 'protr', 'text', 'section']], ['Navegació', ['orbit', 'pan', 'zoom', 'zoomwin']], ['BIM · referències', ['level', 'grid', 'refplane']], ['BIM · elements', ['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'comp', 'bsec']], ['BIM · fonaments', ['matf', 'pad', 'strip']], ['BIM · classificació', ['ifc']]];
 
 function toolBtn(name) {
-  const b = el('button', 'tb', ico(name)); b.dataset.tool = name; const i = TOOLINFO[name]; b.title = i[0] + ' (' + i[1] + ')'; b.setAttribute('aria-label', i[0]);
+  const b = el('button', 'tb', ico(name)); b.dataset.tool = name; const i = TOOLINFO[name]; b.title = i[0] + (keyOfTool(name) ? ' (' + keyOfTool(name) + ')' : ''); b.setAttribute('aria-label', i[0]);
   b.onclick = () => setTool(name); return b;
 }
-function buildBars() {
-  const tb = $('toolbar'); tb.innerHTML = '';
-  TOOLBAR.forEach(grp => { const g = el('div', 'tgrp'); grp.forEach(n => g.appendChild(toolBtn(n))); tb.appendChild(g); });
-  const ga = el('div', 'tgrp');
-  [['prev', 'Vista anterior', prevView], ['undo', 'Desfés (Ctrl+Z)', undo], ['redo', 'Refés (Ctrl+Y)', redo], ['group', 'Agrupa (Ctrl+G)', doGroup], ['selbar', 'Selecció per propietats (Ctrl+Maj+F)', () => toggleSelBar()], ['fit', 'Ajusta la vista (Maj+Z)', () => fitView()], ['scene', 'Desa escena', saveScene], ['open', 'Obre (Ctrl+O)', openFile], ['save', 'Desa (Ctrl+S)', saveFile]].forEach(([n, t, f]) => {
-    const b = el('button', 'tb', ico(n)); b.title = t; b.setAttribute('aria-label', t); b.onclick = f; ga.appendChild(b);
-  });
-  tb.appendChild(ga);
-  const rail = $('rail'); rail.innerHTML = '';
-  RAIL.forEach(([t, ns]) => { rail.appendChild(el('div', 'rg-t', t)); const g = el('div', 'rg'); ns.forEach(n => g.appendChild(toolBtn(n))); rail.appendChild(g); });
-}
-
 /* ---------- menús en cascada ---------- */
 const P_ = { conic: 'Cònica', axo: 'Axonomètrica', cav: 'Cavallera', mil: 'Militar' };
 function menuDefs() {
-  const tools = ns => ns.map(n => ({ l: TOOLINFO[n][0], sc: TOOLINFO[n][1], f: () => setTool(n), ck: () => S.tool === n }));
+  const tools = ns => ns.map(n => ({ l: TOOLINFO[n][0], sc: keyOfTool(n), f: () => setTool(n), ck: () => S.tool === n }));
   return [
     ['Fitxer', [
       { l: 'Nou', f: () => newDoc() }, { l: 'Obre…', sc: 'Ctrl+O', f: openFile }, { sep: 1 }, { l: 'Desa', sc: 'Ctrl+S', f: saveFile }, { l: 'Desa com a…', f: () => saveFile() }, { sep: 1 },
       { l: 'Importa', sub: [{ l: 'DXF (ASCII)…', f: () => openImportFile('dxf') }, { l: 'Imatge de calc (PNG · JPG · SVG)…', f: () => openImportFile('img') }] }, { l: 'Document 2D (planta, alçat, secció)…', f: () => docDlg() }, { l: 'Exporta', sub: [{ l: 'IFC (2x3 · 4 · 4x1 · 4x2 · 4x3)…', f: () => exportDlg('ifc') }, { l: 'DXF (R12 · 2000 · 2013)…', f: () => exportDlg('dxf') }, { sep: 1 }, { l: 'OBJ + MTL…', f: () => exportDlg('obj') }, { l: 'glTF binari (GLB)…', f: () => exportDlg('glb') }, { l: 'STL…', f: () => exportDlg('stl') }, { sep: 1 }, { l: 'SVG de la vista…', f: () => exportDlg('svg') }, { l: 'PNG de la vista…', f: () => exportDlg('png') }, { sep: 1 }, { l: 'JSON guaitaBIMup', f: () => saveFile(true) }, { l: 'SKP (experimental)…', f: () => exportDlg('skp') }] }, { sep: 1 },
-      { l: 'Configuració…', f: configDlg }, { l: 'Opcions del programa…', f: optsDlg }, { sep: 1 }, { l: 'Quant a guaitaBIMup', f: aboutDlg }]],
+      { l: 'Configuració…', f: configDlg }, { l: 'Opcions del programa…', f: optsDlg }]],
     ['Edita', [
       { l: 'Desfés', sc: 'Ctrl+Z', f: undo }, { l: 'Refés', sc: 'Ctrl+Y', f: redo }, { sep: 1 }, { l: 'Inverteix la selecció', sc: 'Ctrl+I', f: invertSel }, { l: 'Selecció per propietats…', f: () => toggleSelBar() }, { sep: 1 }, { l: 'Esborra', sc: 'Supr', f: doDelete }, { l: 'Selecciona-ho tot', sc: 'Ctrl+A', f: selectAll }, { l: 'Deselecciona', sc: 'Ctrl+Maj+A', f: () => { clearSel(); refreshSel(); } }, { sep: 1 },
       { l: 'Crea grup', sc: 'Ctrl+G', f: doGroup }, { l: 'Explota el grup', f: doExplode }, { l: 'Surt del grup', sc: 'Esc', f: exitCtx }]],
@@ -152,16 +151,22 @@ function menuDefs() {
       { l: 'Vistes', sub: [['Dalt', [0, 0, 1]], ['Davant', [0, -1, 0]], ['Darrere', [0, 1, 0]], ['Dreta', [1, 0, 0]], ['Esquerra', [-1, 0, 0]], ['Baix', [0, 0, -1]], ['Isomètrica', [1, -1, 1]]].map(([l, d]) => ({ l, f: () => goDir(d) })) }, { sep: 1 },
       { l: 'Estils', sub: STYLES_BUILTIN.map(b => ({ l: b.name, f: () => useStyle(b), ck: () => S.style.name === b.name })) }, { l: 'Estil', sub: [{ l: 'Arestes', f: () => { S.style.edges = !S.style.edges; refreshAll(); }, ck: () => S.style.edges }, { l: 'Filferro', f: () => { S.style.wire = !S.style.wire; refreshAll(); }, ck: () => S.style.wire }, { l: 'Raigs X', f: () => { S.style.xray = !S.style.xray; refreshAll(); }, ck: () => S.style.xray }, { sep: 1 },
         { l: 'Color per material', f: () => { S.style.colorBy = 'mat'; refreshAll(); }, ck: () => S.style.colorBy === 'mat' }, { l: 'Color per classe IFC', f: () => { S.style.colorBy = 'ifc'; refreshAll(); }, ck: () => S.style.colorBy === 'ifc' }] },
-      { l: 'Mostra', sub: [['ground', 'Terra'], ['axes', 'Eixos'], ['levels', 'Nivells'], ['grids', 'Eixos de pilars'], ['cube', 'ViewCube']].map(([k, l]) => ({ l, f: () => { S.show[k] = !S.show[k]; if (k === 'cube') $('cubeBox').style.display = S.show[k] ? '' : 'none'; refreshAll(); }, ck: () => S.show[k] })) },
+      { l: 'Mostra', sub: [['ground', 'Terra'], ['axes', 'Eixos'], ['levels', 'Nivells'], ['grids', 'Eixos de pilars'], ['cube', 'Cub d’orientació']].map(([k, l]) => ({ l, f: () => { S.show[k] = !S.show[k]; if (k === 'cube') $('cubeBox').style.display = S.show[k] ? '' : 'none'; refreshAll(); }, ck: () => S.show[k] })) },
       { l: 'Representació dels nivells', sub: [['full', 'Complet'], ['compact', 'Compacte']].map(([k, l]) => ({ l, f: () => setVisMode('lvl', k), ck: () => visMode('lvl') === k })) },
       { l: 'Representació dels eixos', sub: [['full', 'Complet'], ['compact', 'Compacte'], ['plan', '1 línia en planta']].map(([k, l]) => ({ l, f: () => setVisMode('grd', k), ck: () => visMode('grd') === k })) },
       { l: 'Fons', sub: [['sky', 'Cel'], ['white', 'Blanc'], ['grey', 'Gris fosc'], ['black', 'Negre']].map(([k, l]) => ({ l, f: () => setBg(k), ck: () => S.bg === k })) }, { sep: 1 },
+      { l: 'Càmera', sub: [...tools(['orbit', 'pan', 'zoom', 'zoomwin']), { l: 'Vista anterior', f: prevView }] }, { l: 'Caixa de secció…', f: sectionBoxPanel }, { l: 'Desa escena', f: saveScene }, { sep: 1 },
       { l: 'Ajusta a la selecció', sc: 'Ctrl+Maj+Z', f: () => fitView(true) }, { l: 'Ajusta el model', sc: 'Maj+Z', f: () => fitView() }]],
-    ['Càmera', [{ l: 'Òrbita', sc: 'O', f: () => setTool('orbit') }, { l: 'Desplaça', sc: 'H', f: () => setTool('pan') }, { l: 'Zoom', sc: 'Z', f: () => setTool('zoom') }, { l: 'Zoom finestra', sc: 'Y', f: () => setTool('zoomwin') }, { l: 'Vista anterior', f: prevView }, { sep: 1 }, { l: 'Caixa de secció…', f: sectionBoxPanel }, { l: 'Desa escena', f: saveScene }]],
     ['Dibuixa', tools(['line', 'freehand', 'rect', 'rrect', 'circle', 'poly', 'arc'])],
-    ['Eines', [...tools(['select', 'eraser', 'paint', 'pushpull', 'move', 'rotate', 'scale', 'followme', 'offset']), { sep: 1 }, ...tools(['tape', 'dim', 'protr', 'text', 'section']), { sep: 1 }, { l: 'Sòlids (booleanes)', sub: BOOL_ITEMS() }]],
+    ['Modifica', [...tools(['select', 'eraser', 'paint']), { sep: 1 }, ...tools(['pushpull', 'move', 'copy', 'rotate', 'scale', 'followme', 'offset']), { sep: 1 }, ...tools(['trim', 'split', 'join', 'mirror', 'align', 'lineoff']), { sep: 1 }, { l: 'Sòlids (booleanes)', sub: BOOL_ITEMS() }]],
+    ['Mesura', tools(['tape', 'dim', 'protr', 'text', 'section'])],
     ['BIM', [...tools(['level', 'grid', 'refplane']), { sep: 1 }, ...tools(['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'comp', 'bsec']), { sep: 1 }, ...tools(['matf', 'pad', 'strip']), { sep: 1 }, ...tools(['ifc']), { l: 'Classificació assistida…', f: () => classDlg() }, { l: 'Selecciona grups sense classificar', f: () => selectPending() }, { sep: 1 }, { l: 'Mou la selecció al nivell actiu', f: () => toLevel('move') }, { l: 'Copia la selecció al nivell actiu', f: () => toLevel('copy') }, { l: 'Assigna la selecció al nivell actiu', f: () => toLevel('assign') }, { sep: 1 }, { l: 'Nivell de treball', sub: S.model.levels.slice().reverse().map(l => ({ l: l.name + '  ' + fmtElev(l.elev), f: () => setLevel(l.id), ck: () => S.level === l.id })) }]],
-    ['Finestra', [{ l: 'Restableix la safata', f: () => { TRAY.closed.clear(); ['mat', 'tags', 'outl', 'scenes'].forEach(k => TRAY.closed.add(k)); renderTray(); } }]],
+    ['Finestra', [
+      { l: 'Barres d’eines', sub: BAR_DEFS.map(d => ({ l: d[1], f: () => toggleBar(d[0]), ck: () => !LAY.bars[d[0]].hidden })) },
+      { l: 'Panells', sub: Object.entries(panelDefs()).map(([k, d]) => ({ l: d[0], f: () => togglePanel(k), ck: () => !(LAY.panels[k] && LAY.panels[k].hidden) })) },
+      { l: 'Panells flotants', sub: Object.entries(panelDefs()).map(([k, d]) => ({ l: d[0], f: () => setPanelFloat(k, !(LAY.panels[k] && LAY.panels[k].float)), ck: () => !!(LAY.panels[k] && LAY.panels[k].float) })) },
+      { l: 'Segon panell lateral', f: toggleTray2, ck: () => LAY.two },
+      { sep: 1 }, { l: 'Restableix la disposició', f: layReset }]],
     ['Ajuda', [{ l: 'Dreceres de teclat', f: keysDlg }, { l: 'Quant a…', f: aboutDlg }]],
   ];
 }
@@ -187,29 +192,6 @@ function closeMenus() { document.querySelectorAll('.menu.open').forEach(m => m.c
 document.addEventListener('click', closeMenus);
 
 /* ---------- safata ---------- */
-const TRAY = { closed: new Set(['mat', 'tags', 'outl', 'scenes', 'guides', 'sty']) };
-function panel(key, title, body) {
-  const p = el('section', 'pn' + (TRAY.closed.has(key) ? ' closed' : '')), h = el('h2', '', '<span class="ar">' + (TRAY.closed.has(key) ? '▸' : '▾') + '</span><span class="t">' + esc(title) + '</span>');
-  h.onclick = () => { if (TRAY.closed.has(key)) TRAY.closed.delete(key); else TRAY.closed.add(key); renderTray(); };
-  const b = el('div', 'pb'); body(b); p.appendChild(h); p.appendChild(b); return p;
-}
-function renderTray() {
-  const t = $('tray'); const sy = t.scrollTop; t.innerHTML = '';
-  t.appendChild(panel('info', 'Informació de l’entitat', b => { b.id = 'infoBody'; }));
-  t.appendChild(panel('lvl', 'Nivells', levelsPanel));
-  t.appendChild(panel('views', 'Navegador de vistes', viewsPanel));
-  t.appendChild(panel('cmp', 'Components', compsPanel));
-  t.appendChild(panel('sty', 'Estils de visualització', stylesPanel));
-  t.appendChild(panel('bsec', 'Seccions BIM', bsecPanel));
-  t.appendChild(panel('ifc', 'Classificador IFC', ifcPanel));
-  t.appendChild(panel('guides', 'Eixos, plans i anotacions', guidesPanel));
-  t.appendChild(panel('imgs', 'Imatges de calc', imgPanel));
-  t.appendChild(panel('mat', 'Materials', matPanel));
-  t.appendChild(panel('tags', 'Etiquetes', tagsPanel));
-  t.appendChild(panel('outl', 'Esquema', outlPanel));
-  t.appendChild(panel('scenes', 'Escenes', scenesPanel));
-  renderInfo(); t.scrollTop = sy;
-}
 function kv(rows) { return '<div class="kv">' + rows.map(([k, v]) => '<span>' + esc(k) + '</span><span>' + v + '</span>').join('') + '</div>'; }
 function renderInfo() {
   const b = $('infoBody'); if (!b) return; const { c } = ctxInfo(), n = selCount();
@@ -332,7 +314,6 @@ window.addEventListener('beforeunload', e => { if (S.dirty) { e.preventDefault()
 function dlg(html) { $('dlgBox').innerHTML = html + '<div style="text-align:right"><button class="btn acc" id="dlgOk">Tanca</button></div>'; $('dlg').classList.add('show'); $('dlgOk').onclick = () => $('dlg').classList.remove('show'); }
 $('dlg').onclick = e => { if (e.target === $('dlg')) $('dlg').classList.remove('show'); };
 function aboutDlg() { dlg('<h3>guaitaBIMup ' + VERSION + '</h3><p>Modelador 3D tipus SketchUp de la suite Guaita Apps, amb nivells, eixos de pilars, classificació IFC i projeccions cònica, axonomètrica, cavallera i militar.</p><p>© SBS BiM Consulting, Jordi Subirós · Llicència AGPL-3.0-only.<br>Inclou Three.js (MIT) © 2010–2023 three.js authors.</p>'); }
-function keysDlg() { dlg('<h3>Dreceres de teclat</h3><table>' + Object.entries(TOOLINFO).map(([k, v]) => '<tr><td>' + esc(v[0]) + '</td><td><kbd>' + esc(v[1]) + '</kbd></td></tr>').join('') + '<tr><td>Desfés / Refés</td><td><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd></td></tr><tr><td>Obre / Desa</td><td><kbd>Ctrl+O</kbd> <kbd>Ctrl+S</kbd></td></tr><tr><td>Ajusta el model</td><td><kbd>Maj+Z</kbd></td></tr><tr><td>Bloqueja eix</td><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd></td></tr></table><p>Mesures: escriu el valor amb el teclat i prem Intro.</p>'); }
 
 /* ---------- teclat ---------- */
 let seq = '', seqT = null;
@@ -355,17 +336,14 @@ window.addEventListener('keydown', ev => {
   if (k === 'Tab' && T && T !== TOOLS.select && !ev.shiftKey) { SNAP_CYC++; SNAP_AT = { x: lastMouse.mx, y: lastMouse.my }; ev.preventDefault(); needRender = true; return; }
   if (k === 'Enter' && TABST && TABST.cur) { confirmTab('replace'); ev.preventDefault(); return; }
   if (k === 'Escape' && TABST) { tabReset(); syncUI(); return; }
-  if (k === 'Escape') { if (Object.keys(st).length) cancelTool(); else if (!exitCtx()) { clearSel(); refreshSel(); clearAnnSel(); } $('dlg').classList.remove('show'); return; }
+  if (k === 'Escape') { if (Object.keys(st).length) cancelTool(); else if (S.tool !== 'select') setTool('select'); else if (!exitCtx()) { clearSel(); refreshSel(); clearAnnSel(); } $('dlg').classList.remove('show'); return; }
   if (k === 'Delete' || k === 'Backspace') { doDelete(); ev.preventDefault(); return; }
   if (k === 'ArrowRight') { LOCK = LOCK === 0 ? null : 0; ev.preventDefault(); return; } if (k === 'ArrowLeft') { LOCK = LOCK === 1 ? null : 1; ev.preventDefault(); return; } if (k === 'ArrowUp') { LOCK = LOCK === 2 ? null : 2; ev.preventDefault(); return; }
-  if (ev.shiftKey && { F: 'slab', P: 'column', O: 'opening', C: 'roof', E: 'stair' }[k]) { setTool({ F: 'slab', P: 'column', O: 'opening', C: 'roof', E: 'stair' }[k]); ev.preventDefault(); return; }
   if (k === 'Z' && ev.shiftKey) { fitView(); return; }
-  if (k.length === 1 && /[a-z ]/i.test(k)) {
-    const kl = k.toLowerCase(); clearTimeout(seqT); seq += kl; seqT = setTimeout(() => { seq = ''; }, 600);
-    if (seq === 'll') { setTool('level'); seq = ''; return; } if (seq === 'gr') { setTool('grid'); seq = ''; return; }
-    if (seq === 'rp') { setTool('refplane'); seq = ''; return; }
-    if (kl === 'g' || kl === 'l' || kl === 'r') { seqT && 0; setTimeout(() => { if (seq === kl) { seq = ''; if (KEYMAP[kl]) setTool(KEYMAP[kl]); } }, 320); return; }
-    if (KEYMAP[kl]) { setTool(KEYMAP[kl]); seq = ''; ev.preventDefault(); }
+  if (!ev.altKey && /^[a-z]$/i.test(k)) {
+    const kl = k.toUpperCase(); clearTimeout(seqT);
+    if (seq) { const combo = seq + kl; seq = ''; if (KEY2CMD[combo] && runCmd(KEY2CMD[combo])) ev.preventDefault(); return; }
+    seq = kl; seqT = setTimeout(() => { seq = ''; }, 900);
     return;
   }
   if (/^[0-9.,\-]$/.test(k)) { $('vcb').value = ''; $('vcb').focus(); }

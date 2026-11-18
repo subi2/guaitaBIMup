@@ -5,7 +5,7 @@
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '29';
+const VERSION = '0.40.0';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -30,7 +30,7 @@ const PALETTE = [['Blanc', '#F4F4F0'], ['Gris clar', '#C9CCD1'], ['Gris fosc', '
   ['Formigó', '#9AA3AE'], ['Acer', '#6E7B8A'], ['Teula', '#D9764A'], ['Aigua', '#5AA9D6']];
 
 /* ---------- opcions del programa (no formen part del model) ---------- */
-const OPT_DEF = { pick: 6, crossRL: true, chainSameClass: true, orbit: 0.008, wheel: 0.0012, wheelInv: false, orbitInvY: false, zoomCursor: false, axisPx: 14, navOrbit: 'alt', navPan: 'meta', navZoom: 'ctrl', fov: 35, anim: 260, edgeBias: 2, snapPx: 12, wallT: 0.30, slabT: 0.20, roofT: 0.25, roofSlope: 30, slopeUnit: 'pct', sillH: 0.90, matT: 0.50, padW: 1.20, padD: 1.20, padT: 0.50, stripW: 0.60, stripD: 0.40, colW: 0.40, colD: 0.40, wallH: 3.00, wallJust: 'c', wallHm: 'next', stairShape: 'I', stairTurn: 'l', stairW: 1.00, stairG: 0.28, stairT: 0.15, stairGap: 0.10, stairR: 0.175, stairUse: 'gen' };
+const OPT_DEF = { pick: 6, crossRL: true, chainSameClass: true, orbit: 0.008, wheel: 0.0012, wheelInv: false, orbitInvY: false, zoomCursor: false, axisPx: 14, axisPxZ: 20, snapGrid: true, snapStep: 0.5, navOrbit: 'alt', navPan: 'meta', navZoom: 'ctrl', fov: 35, anim: 260, edgeBias: 2, snapPx: 12, wallT: 0.30, slabT: 0.20, roofT: 0.25, roofSlope: 30, slopeUnit: 'pct', sillH: 0.90, matT: 0.50, padW: 1.20, padD: 1.20, padT: 0.50, stripW: 0.60, stripD: 0.40, colW: 0.40, colD: 0.40, wallH: 3.00, wallJust: 'c', wallHm: 'next', stairShape: 'I', stairTurn: 'l', stairW: 1.00, stairG: 0.28, stairT: 0.15, stairGap: 0.10, stairR: 0.175, stairUse: 'gen' };
 const OPT = (() => { const o = { ...OPT_DEF }; try { Object.assign(o, JSON.parse(localStorage.getItem('guaitabimup.opts')) || {}); } catch (e) { /* */ } return o; })();
 const EDGE_BIAS = { value: OPT.edgeBias * 1e-5 };
 
@@ -40,7 +40,7 @@ const S = {
   tool: 'select', mat: null, ifcActive: null, autoGroup: false, level: null,
   style: null, show: { ground: true, axes: true, levels: true, grids: true, cube: true },
   hiddenIfc: new Set(), bg: 'sky', undo: [], redo: [], dirty: false, fileName: 'sense-títol.gbup.json', fileHandle: null,
-  tabs: [], view: null, segs: 24, sides: 6, selAnn: { lvls: new Set(), grids: new Set() }, boolPend: null,
+  tabs: [], view: null, segs: 24, sides: 6, selAnn: { lvls: new Set(), grids: new Set(), dims: new Set(), texts: new Set() }, boolPend: null,
 };
 function newModel() {
   const m = K.newModel();
@@ -56,14 +56,18 @@ function ctxInfo() {
 }
 const toLocal = p => V.sub(p, ctxInfo().off);
 const workZ = () => { const l = S.model.levels.find(x => x.id === S.level); return l ? l.elev : 0; };
-function clearSel() { S.sel.faces.clear(); S.sel.edges.clear(); S.sel.groups.clear(); }
+function clearSel() { S.sel.faces.clear(); S.sel.edges.clear(); S.sel.groups.clear(); const A = S.selAnn; if (A.dims.size || A.texts.size) { A.dims.clear(); A.texts.clear(); if (typeof rebuildAnnot === 'function') rebuildAnnot(); } }
 const selCount = () => S.sel.faces.size + S.sel.edges.size + S.sel.groups.size;
 
 /* ---------- desfer / refer ---------- */
 function snapshot() { S.model.meta.style = styleSnapshot(); return JSON.stringify(K.toJSON(S.model)); }
-function pushUndo() { S.undo.push(snapshot()); if (S.undo.length > 80) S.undo.shift(); S.redo.length = 0; markDirty(); }
+const OP_LBL = { move: 'moure', copy: 'copiar', rotate: 'girar', scale: 'escalar', pushpull: 'estirar', offset: 'desplaçar', followme: 'seguir', eraser: 'esborrar', paint: 'pintar', line: 'dibuixar', rect: 'rectangle', rrect: 'rectangle', circle: 'cercle', poly: 'polígon', arc: 'arc', freehand: 'dibuixar', wall: 'muro', column: 'pilar', slab: 'llosa', roof: 'coberta', stair: 'escala', opening: 'obertura', tape: 'mesura', dim: 'cota', text: 'text', level: 'nivell', grid: 'eix', select: 'selecció' };
+function opLabel() { return OP_LBL[S.tool] || 'canvi'; }
+function updUndoTitle() { const b = $('tb_undo'); if (!b) return; const l = S.undoL && S.undoL[S.undo.length - 1]; const t = l ? 'Desfer ' + l + ' (Ctrl+Z)' : 'Desfés (Ctrl+Z)'; b.title = t; b.setAttribute('aria-label', t); }
+/* pila d'instantànies amb l'etiqueta de cada operació (per al botó Desfer) */
+function pushUndo(label) { S.undoL = (S.undoL || []).slice(0, S.undo.length); S.undo.push(snapshot()); S.undoL.push(label || opLabel()); if (S.undo.length > 80) { S.undo.shift(); S.undoL.shift(); } S.redo.length = 0; markDirty(); updUndoTitle(); }
 function restore(js) { S.model = K.fromJSON(JSON.parse(js)); clearSel(); ctxInfo(); if (!S.model.levels.some(l => l.id === S.level)) S.level = S.model.levels.length ? S.model.levels[0].id : null; refreshAll(); }
-function undo() { if (!S.undo.length) return; cancelTool(); S.redo.push(snapshot()); restore(S.undo.pop()); markDirty(); }
+function undo() { if (!S.undo.length) return; cancelTool(); S.redo.push(snapshot()); restore(S.undo.pop()); if (S.undoL) S.undoL.pop(); markDirty(); updUndoTitle(); }
 function redo() { if (!S.redo.length) return; cancelTool(); S.undo.push(snapshot()); restore(S.redo.pop()); markDirty(); }
 let saveT = null;
 function markDirty() {
@@ -99,11 +103,12 @@ scene.add(gGround, gAxes, gModel, gAnnot, gSel, gPrev);
 })();
 
 /* ---------- càmera i projeccions ---------- */
-const CAM = { target: new THREE.Vector3(3, 3, 1.2), theta: -Math.PI / 3, phi: 1.15, dist: 22, proj: 'conic', fov: OPT.fov, cavA: 45, cavR: 0.5, milK: 1 };
+const CAM = { target: new THREE.Vector3(3, 3, 1.2), theta: -Math.PI / 3, phi: 1.15, dist: 22, proj: 'axo', fov: OPT.fov, cavA: 45, cavR: 0.5, milK: 1 };
 const camP = new THREE.PerspectiveCamera(35, 1, 0.05, 5000), camO = new THREE.OrthographicCamera(-1, 1, 1, -1, -3000, 6000);
 let cam = camP, needRender = true, camAnim = null;
 function camDir() { const st = Math.sin(CAM.phi); return new THREE.Vector3(st * Math.cos(CAM.theta), st * Math.sin(CAM.theta), Math.cos(CAM.phi)); }
 function updCam() {
+  if (typeof S !== 'undefined' && S.navOpen && typeof syncNav === 'function') { try { syncNav(); } catch (e) { /* encara no inicialitzat */ } }
   const w = view.clientWidth || 1, h = view.clientHeight || 1, asp = w / h;
   const dir = camDir(), flat = new THREE.Vector3(-Math.cos(CAM.theta), -Math.sin(CAM.theta), 0);
   const pole = CAM.phi < 0.02 || CAM.phi > Math.PI - 0.02;
@@ -282,7 +287,7 @@ function rebuildAnnot() {
     const act = l.id === S.level, full = vm('lvl') === 'full' || act || SA.lvls.has(l.id), P = [[e.x0, e.y0, l.elev], [e.x1, e.y0, l.elev], [e.x1, e.y1, l.elev], [e.x0, e.y1, l.elev]];
     if (full) quad(P, matLvlLine, act ? matLvlAct : matLvlFill); else { const k = backCorner(); const ci = [0, 1, 2, 3].map(i => P[i]); seg(ci[k], ci[(k + 1) % 4], matLvlLine); seg(ci[k], ci[(k + 3) % 4], matLvlLine); }
     const lb = addLab('lv' + (act ? ' act' : '') + (SA.lvls.has(l.id) ? ' sel' : ''), esc(l.name) + '<i>' + fmtElev(l.elev) + '</i>', lvlLabelPt(e, l)); lb.title = 'Clic: nivell de treball · Ctrl/Maj+clic: mostra’l complet';
-    lb.onclick = ev => { if (ev.ctrlKey || ev.metaKey || ev.shiftKey) toggleAnnSel('lvls', l.id); else setLevel(l.id); };
+    lb.ondblclick = ev => { ev.stopPropagation(); annSelectOnly('lvls', l.id); annEditDlg('lvls', l); }; lb.onclick = ev => { if (ev.ctrlKey || ev.metaKey || ev.shiftKey) toggleAnnSel('lvls', l.id); else setLevel(l.id); };
   }
   if (S.show.grids) for (const g of S.model.grids) {
     if (g.hidden) continue;
@@ -291,9 +296,10 @@ function rebuildAnnot() {
     if (full) quad([[q.a[0], q.a[1], z0], [q.b[0], q.b[1], z0], [q.b[0], q.b[1], z1], [q.a[0], q.a[1], z1]], matGrdLine, matGrdFill);
     else if (mode === 'compact') { seg([q.a[0], q.a[1], z0], [q.b[0], q.b[1], z0], matGrdLine); seg([q.a[0], q.a[1], z1], [q.b[0], q.b[1], z1], matGrdLine); }
     else { lz = workZ(); seg([q.a[0], q.a[1], lz], [q.b[0], q.b[1], lz], matGrdLine); }
-    const gl = addLab('gr' + (SA.grids.has(g.id) ? ' sel' : ''), esc(g.name), [q.a[0] - q.d[0] * 0.5, q.a[1] - q.d[1] * 0.5, lz]); gl.title = 'Clic: mostra l’eix complet'; gl.onclick = () => toggleAnnSel('grids', g.id);
+    const gl = addLab('gr' + (SA.grids.has(g.id) ? ' sel' : ''), esc(g.name), [q.a[0] - q.d[0] * 0.5, q.a[1] - q.d[1] * 0.5, lz]); gl.title = 'Clic: mostra l’eix complet'; gl.onclick = () => toggleAnnSel('grids', g.id); gl.ondblclick = ev => { ev.stopPropagation(); annSelectOnly('grids', g.id); annEditDlg('grids', g); };
   }
   if (typeof annotExtra === 'function') annotExtra(e, quad, addLab);
+  if (typeof gripsRebuild === 'function' && !(typeof GRIP !== 'undefined' && GRIP.drag)) gripsRebuild();
   needRender = true;
 }
 /* en mode compacte, les arestes de nivell es recalculen quan la càmera gira */
@@ -302,7 +308,10 @@ function lvlBackOn() { return Math.sin(CAM.phi) > 0.05; }
 function lvlLabelPt(e, l) {
   const C = [[e.x0, e.y0], [e.x1, e.y0], [e.x1, e.y1], [e.x0, e.y1]];
   if (!lvlBackOn()) return [e.x1 + 0.9, e.y0, l.elev];
-  const k = backCorner(), c = C[k], cx = (e.x0 + e.x1) / 2, cy = (e.y0 + e.y1) / 2, ox = c[0] > cx ? 0.6 : -0.6, oy = c[1] > cy ? 0.6 : -0.6;
+  /* un vèrtex més a l'esquerra (en pantalla) del vèrtex de darrere, sobre una de les dues arestes de darrere */
+  const k = backCorner(), R = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0), nb = [(k + 1) % 4, (k + 3) % 4];
+  const sx = i => C[i][0] * R.x + C[i][1] * R.y, j = sx(nb[0]) <= sx(nb[1]) ? nb[0] : nb[1];
+  const c = C[j], cx = (e.x0 + e.x1) / 2, cy = (e.y0 + e.y1) / 2, ox = c[0] > cx ? 0.6 : -0.6, oy = c[1] > cy ? 0.6 : -0.6;
   return [c[0] + ox, c[1] + oy, l.elev];
 }
 function updBackCorner() { if (!S.show.levels) return; const k = lvlBackOn() ? backCorner() : -1; if (k !== BACK_K) { BACK_K = k; rebuildAnnot(); } }
@@ -360,14 +369,42 @@ function snapCrossings(mx, my, ray, wz) {
   for (const c of out) { const d = sd(c.p); if (d < bd) { bd = d; best = c; } }
   return best;
 }
+/* punt de l'eix i (0 vermell, 1 verd, 2 blau) més proper al cursor en pantalla, des de 'from'.
+   Projecta l'eix a pantalla i mesura la distància del cursor a aquesta recta projectada (no al raig 3D).
+   Si l'eix és gairebé paral·lel a la visual (blau vist de dalt), no enganxa. */
+function axisScreenPick(from, i, mx, my) {
+  const L = Math.max(0.2, CAM.dist * 0.05), a = toScreen(from), b = toScreen(V.add(from, V.mul(AXES[i], L)));
+  if (a.z > 1 || b.z > 1) return null;
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy; if (l2 < 9) return null;
+  /* estimació lineal i després tres passos de Newton en pantalla (la perspectiva no és lineal) */
+  let t = ((mx - a.x) * dx + (my - a.y) * dy) / l2, S = null;
+  for (let k = 0; k < 4; k++) {
+    S = toScreen(V.add(from, V.mul(AXES[i], t * L))); if (S.z > 1) return null;
+    if (k === 3) break;
+    const e = 1e-3, S2 = toScreen(V.add(from, V.mul(AXES[i], (t + e) * L))); if (S2.z > 1) return null;
+    const ux = (S2.x - S.x) / e, uy = (S2.y - S.y) / e, den = ux * ux + uy * uy; if (den < 1e-6) return null;
+    t += ((mx - S.x) * ux + (my - S.y) * uy) / den;
+  }
+  return { p: V.add(from, V.mul(AXES[i], t * L)), d: Math.hypot(S.x - mx, S.y - my) };
+}
+/* punt de la quadrícula del nivell actiu (pas OPT.snapStep), només si és a prop del cursor */
+function snapGridPt(mx, my, ray, wz) {
+  if (!OPT.snapGrid) return null;
+  const s = Math.max(0.01, +OPT.snapStep || 0.5), p0 = rayPlane(ray, [0, 0, wz], [0, 0, 1]); if (!p0 || !isFinite(p0[0] + p0[1])) return null;
+  const p = [Math.round(p0[0] / s) * s, Math.round(p0[1] / s) * s, wz], sc = toScreen(p);
+  if (sc.z > 1 || Math.hypot(sc.x - mx, sc.y - my) > 10) return null;
+  return { p, kind: 'sgrid', label: 'Quadrícula ' + fmtM(s), col: '#2E7D32' };
+}
 /* Tab cicla entre els snaps propers al cursor (només en passos sense eix) */
 let SNAP_CYC = 0, SNAP_AT = { x: 0, y: 0 }, AXIS_STICK = -1;
 function snapAlts(mx, my, ray) {
   const sd = p => { const s = toScreen(p); return s.z > 1 ? Infinity : Math.hypot(s.x - mx, s.y - my); }, out = [], wz = workZ();
+  if (sd([0, 0, 0]) < 10) out.push({ p: [0, 0, 0], kind: 'origin', label: 'Origen', col: '#E0A800' });
   for (const v of SNAP.verts) if (sd(v.p) < 12) { out.push({ p: v.p.slice(), kind: 'end', label: 'Final', col: '#3AA23A' }); break; }
   for (const e of SNAP.edges) { const m = V.lerp(e.a, e.b, 0.5); if (sd(m) < 9) { out.push({ p: m, kind: 'mid', label: 'Punt mig', col: '#00B8D4' }); break; } }
   for (const e of SNAP.edges) { const q = closestOnLineToRay(e.a, V.sub(e.b, e.a), ray, true); if (q && sd(q.p) < 7) { out.push({ p: q.p, kind: 'edge', label: 'Sobre l’aresta', col: '#DB3B3B' }); break; } }
   const cr = snapCrossings(mx, my, ray, wz); if (cr) out.push(cr);
+  const sg = snapGridPt(mx, my, ray, wz); if (sg) out.push(sg);
   const hit = faceHit(ray); if (hit) out.push({ p: hit.p, kind: 'face', label: 'Sobre la cara', col: '#3B6FDB' });
   out.push({ p: hit ? hit.p : (rayPlane(ray, [0, 0, wz], [0, 0, 1]) || CAM.target.toArray()), kind: 'plane', label: '', col: '#8B939F' });
   return out;
@@ -383,10 +420,13 @@ function pickBase(mx, my, opt) {
   opt = opt || {};
   const ray = mouseRay(mx, my), sd = p => { const s = toScreen(p); return s.z > 1 ? Infinity : Math.hypot(s.x - mx, s.y - my); };
   let res = null, bd = 11;
+  const od = sd([0, 0, 0]); if (od < 10) { bd = od; res = { p: [0, 0, 0], kind: 'origin', label: 'Origen', col: '#E0A800' }; }
   for (const v of SNAP.verts) { const d = sd(v.p); if (d < bd) { bd = d; res = { p: v.p.slice(), kind: 'end', label: 'Final', col: '#3AA23A' }; } }
   if (!res) { bd = 9; for (const e of SNAP.edges) { const m = V.lerp(e.a, e.b, 0.5), d = sd(m); if (d < bd) { bd = d; res = { p: m, kind: 'mid', label: 'Punt mig', col: '#00B8D4', edge: e }; } } }
-  const wz = workZ();
+  /* v0.37: amb un primer punt, el pla de treball és l'horitzontal per la cota d'aquest punt (no el del nivell actiu) */
+  const wz = (opt.from && isFinite(opt.from[2])) ? opt.from[2] : workZ();
   if (!res) { const cr = snapCrossings(mx, my, ray, wz); if (cr) res = cr; }
+  if (!res) { const sg = snapGridPt(mx, my, ray, wz); if (sg) res = sg; }
   if (!res && S.show.grids) {
     bd = 10; const G = guides();
     for (let i = 0; i < G.length; i++) for (let j = i + 1; j < G.length; j++) {
@@ -410,18 +450,18 @@ function pickBase(mx, my, opt) {
   }
   res.hit = hit; res.ray = ray;
   if (opt.from) {
-    const strong = res.kind === 'end' || res.kind === 'mid' || res.kind === 'edge' || res.kind === 'gridx' || res.kind === 'grid' || res.kind === 'inter_edges' || res.kind === 'inter_axis' || res.kind === 'inter_plane';
+    const strong = res.kind === 'origin' || res.kind === 'sgrid' || res.kind === 'end' || res.kind === 'mid' || res.kind === 'edge' || res.kind === 'gridx' || res.kind === 'grid' || res.kind === 'inter_edges' || res.kind === 'inter_axis' || res.kind === 'inter_plane';
     if (opt.lock != null) {
       const ax = AXES[opt.lock];
       if (strong) res.p = V.add(opt.from, V.mul(ax, V.dot(V.sub(res.p, opt.from), ax)));
       else { const q = closestOnLineToRay(opt.from, ax, ray); if (q) res.p = q.p; }
       res.axis = opt.lock; res.label = AX_NAME[opt.lock] + (strong ? ' · ' + res.label.toLowerCase() : ''); res.col = AX_COL[opt.lock]; res.kind = 'axis';
     } else if (!strong) {
-      const zone = OPT.axisPx || 14;
-      let ba = zone, bi = -1, bp = null;
-      for (let i = 0; i < 3; i++) { const q = closestOnLineToRay(opt.from, AXES[i], ray); if (!q) continue; const d = sd(q.p); if (d < ba) { ba = d; bi = i; bp = q.p; } }
+      const zn = [OPT.axisPx || 14, OPT.axisPx || 14, OPT.axisPxZ || 20];
+      let ba = Infinity, bi = -1, bp = null;
+      for (let i = 0; i < 3; i++) { const q = axisScreenPick(opt.from, i, mx, my); if (q && q.d < zn[i] && q.d < ba) { ba = q.d; bi = i; bp = q.p; } }
       /* histèresi: un eix ja enganxat es manté fins a dues vegades la zona */
-      if (bi < 0 && AXIS_STICK >= 0) { const q = closestOnLineToRay(opt.from, AXES[AXIS_STICK], ray); if (q && sd(q.p) < 2 * zone) { bi = AXIS_STICK; bp = q.p; } }
+      if (bi < 0 && AXIS_STICK >= 0) { const q = axisScreenPick(opt.from, AXIS_STICK, mx, my); if (q && q.d < 2 * zn[AXIS_STICK]) { bi = AXIS_STICK; bp = q.p; } }
       AXIS_STICK = bi;
       if (bi >= 0) { res.p = bp; res.axis = bi; res.label = AX_NAME[bi]; res.col = AX_COL[bi]; res.kind = 'axis'; }
     }

@@ -17,7 +17,7 @@ function eyeBox(o) {
   ck.onchange = () => { o.hidden = !ck.checked; markDirty(); rebuildAnnot(); }; return ck;
 }
 function toggleAnnSel(kind, id) { const s = S.selAnn[kind]; if (s.has(id)) s.delete(id); else s.add(id); rebuildAnnot(); }
-function clearAnnSel() { if (S.selAnn.lvls.size || S.selAnn.grids.size) { S.selAnn.lvls.clear(); S.selAnn.grids.clear(); rebuildAnnot(); } }
+function clearAnnSel() { const A = S.selAnn; if (A.lvls.size || A.grids.size || A.dims.size || A.texts.size) { A.lvls.clear(); A.grids.clear(); A.dims.clear(); A.texts.clear(); rebuildAnnot(); } }
 
 /* ---------- opcions del programa (desades al navegador, no al model) ---------- */
 function saveOpts() { try { localStorage.setItem('guaitabimup.opts', JSON.stringify(OPT)); } catch (e) { /* */ } applyOpts(); }
@@ -45,7 +45,7 @@ const OPT_UI = [
     ['navPan', 'Tecla + arrossegar per desplaçar', 's', [['meta', 'Command'], ['alt', 'Opció (Alt)'], ['ctrl', 'Control'], ['shift', 'Majúscules'], ['none', 'Cap']]],
     ['navZoom', 'Tecla + arrossegar per fer zoom (amunt = apropar)', 's', [['ctrl', 'Control'], ['alt', 'Opció (Alt)'], ['meta', 'Command'], ['shift', 'Majúscules'], ['none', 'Cap']]]]],
   ['Pantalla', [['edgeBias', 'Biaix de profunditat de les arestes (0–10)', 'n', 0, 10, 0.5]]],
-  ['Magnetisme', [['axisPx', 'Zona d’atracció dels eixos (píxels)', 'n', 4, 30, 1]]],
+  ['Magnetisme', [['axisPx', 'Zona d’atracció dels eixos vermell i verd (píxels)', 'n', 4, 30, 1], ['axisPxZ', 'Zona d’atracció de l’eix blau (píxels)', 'n', 4, 40, 1], ['snapGrid', 'Magnetisme a la quadrícula del nivell actiu', 'b'], ['snapStep', 'Pas de la quadrícula (m)', 'n', 0.05, 10, 0.05]]],
   ['Nivells', [['snapPx', 'Magnetisme als nivells en Empeny (píxels, 0 = desactivat)', 'n', 0, 40, 1]]],
 ];
 function optsDlg() {

@@ -1,5 +1,5 @@
 /* ============================================================
-   guaitaBIMup 10 — eines, ordres, navegació i ViewCube
+   guaitaBIMup 10 — eines, ordres, navegació i cub d'orientació
    ============================================================ */
 let T = null, LOCK = null, lastMouse = { mx: 0, my: 0 };
 const st = {};
@@ -39,7 +39,7 @@ function selectEntity(en, mode) {
 
 /* ---------- ordres ---------- */
 function doDelete() {
-  if (!selCount()) return; pushUndo(); const { c } = ctxInfo();
+  if (!selCount() && !S.selAnn.dims.size && !S.selAnn.texts.size) return; pushUndo('esborrar'); const { c } = ctxInfo(); delSelAnn();
   for (const id of S.sel.groups) c.groups.delete(id);
   for (const id of S.sel.faces) K.removeFace(c, id);
   for (const id of S.sel.edges) K.removeEdge(S.model, c, id);
@@ -100,8 +100,12 @@ TOOLS.select = {
       for (const e of c.edges.values()) if (cross ? (vin.get(e.a) || vin.get(e.b)) : (vin.get(e.a) && vin.get(e.b))) selOp(S.sel.edges, e.id, mode);
       for (const f of c.faces.values()) if (cross ? f.loop.some(id => vin.get(id)) : f.loop.every(id => vin.get(id))) selOp(S.sel.faces, f.id, mode);
       for (const g of c.groups.values()) { const b = K.bbox(g, g.t); if (!isFinite(b.min[0])) continue; const cs = []; for (let i = 0; i < 8; i++) cs.push(inB([i & 1 ? b.max[0] : b.min[0], i & 2 ? b.max[1] : b.min[1], i & 4 ? b.max[2] : b.min[2]])); if (cross ? cs.some(Boolean) : cs.every(Boolean)) selOp(S.sel.groups, g.id, mode); }
-      refreshSel(); return;
+      const inP = p => { const s = toScreen(p); return s.z < 1 && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1; };
+      for (const dm of S.model.dims) { const o = dimOff(dm), ps = [V.add(dm.a, o), V.add(dm.b, o)].map(inP); if (cross ? ps.some(Boolean) : ps.every(Boolean)) selOp(S.selAnn.dims, dm.id, mode); }
+      for (const tx of S.model.texts) if (inP(tx.p)) selOp(S.selAnn.texts, tx.id, mode);
+      rebuildAnnot(); refreshSel(); return;
     }
+    const an = pickAnn(mx, my); if (an) { selAnnOp(an, selMode(ev)); return; }
     const en = pickEntity(mx, my);
     if (en && en.type === 'outside') { exitCtx(); return; }
     if (confirmTab(selMode(ev))) return;
@@ -118,7 +122,9 @@ TOOLS.select = {
 TOOLS.eraser = {
   down(ev, mx, my) { st.on = true; this.move(ev, mx, my); },
   move(ev, mx, my) {
-    if (!st.on) return; const en = pickEntity(mx, my); if (!en || en.type === 'face' || en.type === 'outside') return;
+    if (!st.on) return; const an = pickAnn(mx, my);
+    if (an) { if (!st.undo) { pushUndo(); st.undo = true; } if (an.k === 'dims') S.model.dims = S.model.dims.filter(d => d.id !== an.id); else S.model.texts = S.model.texts.filter(t => t.id !== an.id); S.selAnn[an.k].delete(an.id); refreshAll(); return; }
+    const en = pickEntity(mx, my); if (!en || en.type === 'face' || en.type === 'outside') return;
     if (!st.undo) { pushUndo(); st.undo = true; } const { c } = ctxInfo();
     if (en.type === 'edge') K.removeEdge(S.model, c, en.id); else c.groups.delete(en.id);
     clearSel(); refreshAll();
@@ -145,7 +151,10 @@ TOOLS.line = {
   },
   seg(p) {
     if (V.dist(st.from, p) < K.TOL) return;
+    const { c } = ctxInfo(), before = new Set(c.edges.keys());
     const r = commitPoly([st.from, p], false); LOCK = null; clearPrev();
+    const nw = new Set([...c.edges.keys()].filter(id => !before.has(id)));
+    if (nw.size) { lineAuto(c, nw); refreshAll(); }
     st.from = r.faces.length ? null : p;
   },
   vcb(txt) { const v = parseNum(txt); if (v == null || !st.from || !st.pk) return; const d = V.norm(V.sub(st.pk.p, st.from)); if (V.len(d) < 0.5) return; this.seg(V.add(st.from, V.mul(d, v))); },
@@ -281,7 +290,7 @@ TOOLS.move = {
     const pk = pick(mx, my, { from: st.from, lock: LOCK }); this.commit(V.sub(pk.p, st.from));
   },
   commit(delta) {
-    if (V.len(delta) < K.TOL) return; const copy = !!st.copy; pushUndo(); this.apply(delta, copy);
+    if (V.len(delta) < K.TOL) return; const copy = !!st.copy; pushUndo(copy ? 'copiar' : 'moure'); this.apply(delta, copy);
     cancelTool(); st.last = { delta, copy }; refreshAll();
   },
   key(ev) { if (ev.key === 'Control' && st.from) { st.copy = !st.copy; return true; } },
@@ -293,6 +302,11 @@ TOOLS.move = {
     if (st.last && !st.from && S.undo.length) { const L = st.last, keep = { faces: new Set(S.sel.faces), edges: new Set(S.sel.edges), groups: new Set(S.sel.groups) }; if (L.copy) return; undo(); S.sel = keep; pushUndo(); L.delta = V.mul(V.norm(L.delta), v); this.apply(L.delta, false); st.last = L; refreshAll(); }
   },
 };
+/* Copiar: mateix flux que Moure, però sempre amb còpia */
+TOOLS.copy = Object.assign({}, TOOLS.move, {
+  down(ev, mx, my) { TOOLS.move.down.call(this, { ctrlKey: true, metaKey: false }, mx, my); },
+  key() { },
+});
 TOOLS.offset = {
   calc(mx, my) {
     const ray = mouseRay(mx, my), o = V.add(K.P(st.c, st.f.loop[0]), st.off), p = rayPlane(ray, o, st.f.n); if (!p) return;
@@ -317,15 +331,25 @@ TOOLS.tape = {
   move(ev, mx, my) { const pk = pick(mx, my, { from: st.from, lock: LOCK }); clearPrev(); if (st.from) { prevLine([st.from, pk.p], 0x8B939F); showTip(mx, my, pk, fmtM(V.dist(st.from, pk.p))); $('vcb').value = fmt(V.dist(st.from, pk.p)); } else showTip(mx, my, pk); },
   down(ev, mx, my) { const pk = pick(mx, my, { from: st.from, lock: LOCK }); if (!st.from) { st.from = pk.p; return; } const d = V.dist(st.from, pk.p), dz = pk.p[2] - st.from[2]; toast('Distància: ' + fmtM(d) + (Math.abs(dz) > 1e-6 ? ' · desnivell ' + fmtM(Math.abs(dz)) : '')); cancelTool(); },
 };
+/* v0.37 · Nivell en dos passos: 1) un punt de referència (amb snaps), 2) la cota estirant per la vertical d'aquest punt (snap a punts, cares i nivells) o escrita */
 TOOLS.level = {
-  z(mx, my) { const pk = pick(mx, my); if (pk.kind !== 'plane') return pk.p[2]; const q = closestOnLineToRay(CAM.target.toArray(), [0, 0, 1], pk.ray); return q ? q.p[2] : 0; },
-  move(ev, mx, my) {
-    const z = Math.round(this.z(mx, my) * 100) / 100, e = annotExtent(); st.z = z; clearPrev();
-    prevLine([[e.x0, e.y0, z], [e.x1, e.y0, z], [e.x1, e.y1, z], [e.x0, e.y1, z]], 0x0E7C86, true);
-    showTip(mx, my, { label: 'Nivell nou', col: '#0E7C86' }, fmtElev(z)); $('vcb').value = fmt(z, 2);
+  z(mx, my) {
+    const pk = pick(mx, my, { from: st.from, lock: 2 }), snapped = pk.label && pk.label !== AX_NAME[2];
+    return { pk, z: snapped ? Math.round(pk.p[2] * 1000) / 1000 : Math.round(pk.p[2] * 100) / 100, snapped };
   },
-  down(ev, mx, my) { createLevel(Math.round(this.z(mx, my) * 100) / 100); clearPrev(); },
-  vcb(txt) { const v = parseNum(txt); if (v != null) createLevel(v); },
+  move(ev, mx, my) {
+    clearPrev();
+    if (!st.from) { const pk = pick(mx, my); showTip(mx, my, pk, 'Clica un punt de referència'); return; }
+    const r = this.z(mx, my), e = annotExtent(); st.z = r.z;
+    prevLine([[e.x0, e.y0, r.z], [e.x1, e.y0, r.z], [e.x1, e.y1, r.z], [e.x0, e.y1, r.z]], 0x0E7C86, true);
+    prevLine([st.from, [st.from[0], st.from[1], r.z]], 0x3B6FDB);
+    showTip(mx, my, { label: r.snapped ? r.pk.label : 'Nivell nou', col: '#0E7C86', p: r.pk.p, kind: r.pk.kind }, fmtElev(r.z)); $('vcb').value = fmt(r.z, 2);
+  },
+  down(ev, mx, my) {
+    if (!st.from) { st.from = pick(mx, my).p; toast('Ara estira cap amunt o avall (o escriu la cota) i clica per crear el nivell.'); return; }
+    const r = this.z(mx, my); createLevel(r.z); cancelTool();
+  },
+  vcb(txt) { const v = parseNum(txt); if (v != null) { createLevel(v); cancelTool(); } },
 };
 TOOLS.grid = {
   pt(mx, my) { const pk = pick(mx, my, { from: st.from, lock: LOCK === 2 ? null : LOCK }); const z = workZ(); let p = pk.p; if (Math.abs(p[2] - z) > 1e-6 && pk.kind === 'plane') p = rayPlane(pk.ray, [0, 0, z], [0, 0, 1]) || p; pk.p = [p[0], p[1], z]; return pk; },
@@ -335,8 +359,12 @@ TOOLS.grid = {
     const g = createGrid(st.from, pk.p); cancelTool(); if (g) { st.lastGrid = g.id; toast('Eix ' + g.name + ' creat. Escriu una distància per crear-ne un de paral·lel.'); }
   },
   vcb(txt) {
-    const v = parseNum(txt), g = S.model.grids.find(x => x.id === st.lastGrid); if (v == null || !g) return;
+    const g = S.model.grids.find(x => x.id === st.lastGrid); if (!g) return;
     const d = V.norm([g.b[0] - g.a[0], g.b[1] - g.a[1], 0]); let n = [d[1], -d[0]]; if ((Math.abs(n[0]) >= Math.abs(n[1]) ? n[0] : n[1]) < 0) n = [-n[0], -n[1]];
+    /* «4.5x3»: tres eixos paral·lels equidistants 4,5 m (equidistància de pilars) */
+    const eq = /^\s*([\d.,]+(?:\s*(?:mm|cm|m))?)\s*[x×]\s*(\d+)\s*$/i.exec(txt);
+    if (eq) { const s = parseNum(eq[1]), k = parseInt(eq[2], 10); if (s == null || s <= 0 || !(k >= 1) || k > 50) return; let last = g; for (let i = 1; i <= k; i++) { const ng = createGrid([g.a[0] + n[0] * s * i, g.a[1] + n[1] * s * i], [g.b[0] + n[0] * s * i, g.b[1] + n[1] * s * i]); if (ng) last = ng; } st.lastGrid = last.id; return; }
+    const v = parseNum(txt); if (v == null) return;
     const ng = createGrid([g.a[0] + n[0] * v, g.a[1] + n[1] * v], [g.b[0] + n[0] * v, g.b[1] + n[1] * v]); if (ng) st.lastGrid = ng.id;
   },
 };
@@ -397,49 +425,80 @@ function zoomAt(mx, my, f) {
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 canvas.addEventListener('pointerleave', () => { $('tip').style.display = 'none'; snapDot(null); });
 
-/* ---------- ViewCube (llenç 2D) ---------- */
+/* ---------- cub d'orientació (llenç 2D) ---------- */
 const CUBE = { hover: null, drag: null };
-const CF = [ /* normal, eix u, eix v, etiqueta */
-  { n: [0, 0, 1], u: [1, 0, 0], v: [0, 1, 0], t: 'DALT' }, { n: [0, 0, -1], u: [1, 0, 0], v: [0, -1, 0], t: 'BAIX' },
-  { n: [0, -1, 0], u: [1, 0, 0], v: [0, 0, 1], t: 'FRONT' }, { n: [0, 1, 0], u: [-1, 0, 0], v: [0, 0, 1], t: 'DARRERE' },
-  { n: [1, 0, 0], u: [0, 1, 0], v: [0, 0, 1], t: 'DRETA' }, { n: [-1, 0, 0], u: [0, -1, 0], v: [0, 0, 1], t: 'ESQ.' }];
+/* caseta d'orientació: parets, teulada i eixos (positiu continu, negatiu discontinu) */
 function cubeBasis() {
   const th = CAM.proj === 'cav' ? Math.round(CAM.theta / (Math.PI / 2)) * Math.PI / 2 : CAM.theta, ph = CAM.proj === 'mil' ? 0.5 : CAM.proj === 'cav' ? 1.25 : Math.max(0.05, Math.min(Math.PI - 0.05, CAM.phi));
   return { r: [-Math.sin(th), Math.cos(th), 0], u: [-Math.cos(ph) * Math.cos(th), -Math.cos(ph) * Math.sin(th), Math.sin(ph)], f: [Math.sin(ph) * Math.cos(th), Math.sin(ph) * Math.sin(th), Math.cos(ph)] };
 }
-const CS = 30;
+const CS = 24;
 function cubeProj(p, b) { return [60 + V.dot(p, b.r) * CS, 56 - V.dot(p, b.u) * CS]; }
+const HW = 0.75, HD = 1.0, HB = -0.65, HE = 0.3, HR = 0.95; /* semiample X, semifons Y, base, ràfec, carener */
+const HF = [ /* cares de la caseta: vèrtexs, normal, vista a la qual porta el clic, nom */
+  { v: [[-HW, -HD, HB], [HW, -HD, HB], [HW, -HD, HE], [0, -HD, HR], [-HW, -HD, HE]], n: [0, -1, 0], d: [0, -1, 0], t: 'Davant', door: [[-0.2, -HD, HB], [0.2, -HD, HB], [0.2, -HD, HB + 0.72], [-0.2, -HD, HB + 0.72]] },
+  { v: [[HW, HD, HB], [-HW, HD, HB], [-HW, HD, HE], [0, HD, HR], [HW, HD, HE]], n: [0, 1, 0], d: [0, 1, 0], t: 'Darrere' },
+  { v: [[HW, -HD, HB], [HW, HD, HB], [HW, HD, HE], [HW, -HD, HE]], n: [1, 0, 0], d: [1, 0, 0], t: 'Dreta' },
+  { v: [[-HW, HD, HB], [-HW, -HD, HB], [-HW, -HD, HE], [-HW, HD, HE]], n: [-1, 0, 0], d: [-1, 0, 0], t: 'Esquerra' },
+  { v: [[HW, -HD, HE], [HW, HD, HE], [0, HD, HR], [0, -HD, HR]], n: V.norm([HR - HE, 0, HW]), d: [0, 0, 1], t: 'Dalt' },
+  { v: [[-HW, HD, HE], [-HW, -HD, HE], [0, -HD, HR], [0, HD, HR]], n: V.norm([-(HR - HE), 0, HW]), d: [0, 0, 1], t: 'Dalt' },
+  { v: [[-HW, -HD, HB], [-HW, HD, HB], [HW, HD, HB], [HW, -HD, HB]], n: [0, 0, -1], d: [0, 0, -1], t: 'Baix' },
+];
+/* cantonades del cub imaginari que envolta la casa: punts calents invisibles cap a axonometries trimètriques */
+const TRI = [0.45, 0.72, 0.53];
+const HCORN = []; for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) HCORN.push({ p: [sx * HW, sy * HD, sz > 0 ? HR : HB], d: [sx * TRI[0], sy * TRI[1], sz * TRI[2]], t: 'Axonometria trimètrica' });
+const HO = [-HW, -HD, HB]; /* origen dels eixos: cantonada davantera esquerra, a la base */
+const HAX = [{ d: [1, 0, 0], p: 2 * HW + 0.85, n: 0.85, i: 2 * HW, k: 0, t: 'X' }, { d: [0, 1, 0], p: 2 * HD + 1.15, n: 0.85, i: 2 * HD, k: 1, t: 'Y' }, { d: [0, 0, 1], p: HR - HB + 0.65, n: 0.85, i: HE - HB, k: 2, t: 'Z' }];
+function cubeAxes(g, b, front) {
+  const C = [0, 0, (HB + HR) / 2], items = [];
+  for (const a of HAX) {
+    const inner = a.i, edge = (t0, t1, sg) => ({ a, sg, t0, t1 });
+    const tmid = (t0, t1, sg) => V.add(HO, V.mul(a.d, sg * (t0 + t1) / 2));
+    const segs = [[0, inner, 1, false], [inner, a.p, 1, true], [0, a.n, -1, false]];
+    for (const [t0, t1, sg, outer] of segs) { const vis = V.dot(V.sub(tmid(t0, t1, sg), C), b.f) > 0; if (vis === front) items.push(edge(t0, t1, sg)); }
+  }
+  for (const { a, sg, t0, t1 } of items) {
+    const q0 = cubeProj(V.add(HO, V.mul(a.d, sg * t0)), b), q1 = cubeProj(V.add(HO, V.mul(a.d, sg * t1)), b); g.strokeStyle = AX_COL[a.k]; g.lineWidth = 1.6; g.lineCap = 'round'; g.setLineDash(sg > 0 ? [] : [3.5, 3]);
+    g.beginPath(); g.moveTo(q0[0], q0[1]); g.lineTo(q1[0], q1[1]); g.stroke(); g.setLineDash([]);
+    if (false) { g.fillStyle = AX_COL[a.k]; g.font = '700 9px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'center'; g.textBaseline = 'middle'; const e = cubeProj(V.add(HO, V.mul(a.d, a.p + 0.3)), b); g.fillText(a.t, e[0], e[1]); }
+  }
+  if (front) for (const a of HAX) { g.fillStyle = AX_COL[a.k]; g.font = '700 9px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'center'; g.textBaseline = 'middle'; const E3 = V.add(HO, V.mul(a.d, a.p + 0.25)), e = cubeProj(E3, b); if (houseCovers(E3, e, b)) continue; g.fillStyle = 'rgba(27,29,33,.88)'; g.beginPath(); g.arc(e[0], e[1], 6.5, 0, Math.PI * 2); g.fill(); g.fillStyle = AX_COL[a.k]; g.fillText(a.t, e[0], e[1] + 0.5); }
+}
+/* el punt 3D E (projectat a e) queda tapat per alguna cara de la casa? */
+function houseCovers(E, e, b) {
+  for (const f of houseFaces(b)) {
+    const pts = f.v.map(p => cubeProj(p, b)); let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], d = pts[j]; if ((a[1] > e[1]) !== (d[1] > e[1]) && e[0] < (d[0] - a[0]) * (e[1] - a[1]) / (d[1] - a[1]) + a[0]) c = !c; }
+    if (!c) continue; const den = V.dot(f.n, b.f); if (den < 1e-6) continue; if (V.dot(f.n, V.sub(f.v[0], E)) / den > 0) return true;
+  }
+  return false;
+}
+function houseFaces(b) { return HF.filter(f => V.dot(f.n, b.f) > 0.02).sort((p, q) => V.dot(HC(p), b.f) - V.dot(HC(q), b.f)); }
+function HC(f) { const c = [0, 0, 0]; f.v.forEach(p => { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; }); return V.mul(c, 1 / f.v.length); }
 function drawCube() {
   const cv = $('vcube'); if (!cv || !S.show.cube) return; const g = cv.getContext('2d'); if (!g) return;
   const b = cubeBasis(); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, 120, 120);
-  g.strokeStyle = '#2E3F36'; g.lineWidth = 4; g.beginPath();
-  for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2, q = cubeProj([Math.cos(a) * 1.75, Math.sin(a) * 1.75, -1], b); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); } g.stroke();
-  const nq = cubeProj([0, 1.75, -1], b); g.fillStyle = '#C6FF1A'; g.beginPath(); g.arc(nq[0], nq[1], 4, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#1B1D21'; g.font = '600 9px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'center'; g.textBaseline = 'middle';
-  const nl = cubeProj([0, 2.25, -1], b); g.fillText('N', nl[0], nl[1]);
-  const vis = CF.filter(f => V.dot(f.n, b.f) > 0.02).sort((x, y) => V.dot(x.n, b.f) - V.dot(y.n, b.f));
-  for (const f of vis) {
-    const c = [-1, 1].flatMap(s => []) && null; const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, t]) => cubeProj(V.add(f.n, V.add(V.mul(f.u, s), V.mul(f.v, t))), b));
+  cubeAxes(g, b, false);
+  const L = V.norm([0.35, -0.55, 0.75]);
+  for (const f of houseFaces(b)) {
+    const pts = f.v.map(p => cubeProj(p, b)), k = 0.58 + 0.42 * Math.max(0, V.dot(f.n, L)), c = Math.round(212 * k);
     g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath();
-    g.fillStyle = f.t === 'DALT' ? '#252B34' : (f.t === 'FRONT' || f.t === 'DARRERE') ? '#1E232B' : '#171B21'; g.fill();
-    if (CUBE.hover && CUBE.hover.f === f) {
-      const h = CUBE.hover, rng = k => k === 0 ? [-0.6, 0.6] : k > 0 ? [0.6, 1] : [-1, -0.6], [s0, s1] = rng(h.s), [t0, t1] = rng(h.t);
-      const hp = [[s0, t0], [s1, t0], [s1, t1], [s0, t1]].map(([s, t]) => cubeProj(V.add(f.n, V.add(V.mul(f.u, s), V.mul(f.v, t))), b));
-      g.beginPath(); hp.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fillStyle = 'rgba(198,255,26,.55)'; g.fill();
-    }
-    g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.strokeStyle = 'rgba(198,255,26,.75)'; g.lineWidth = 1.2; g.lineJoin = 'round'; g.stroke();
-    const c0 = cubeProj(f.n, b), ux = V.dot(f.u, b.r), uy = -V.dot(f.u, b.u), vx = -V.dot(f.v, b.r), vy = V.dot(f.v, b.u);
-    if (Math.abs(ux * vy - uy * vx) > 0.25) { g.save(); g.transform(ux, uy, vx, vy, c0[0], c0[1]); g.fillStyle = '#E7EAEE'; g.font = '600 ' + (f.t.length > 5 ? 8 : 9.5) + 'px ' + getComputedStyle(document.body).fontFamily; g.fillText(f.t, 0, 0); g.restore(); }
+    g.fillStyle = 'rgb(' + c + ',' + c + ',' + Math.max(0, c - 3) + ')'; g.fill();
+    if (CUBE.hover && CUBE.hover.f === f) { g.fillStyle = 'rgba(198,255,26,.6)'; g.fill(); }
+    g.strokeStyle = '#1B1D21'; g.lineWidth = 1; g.lineJoin = 'round'; g.stroke();
+    if (f.door) { const dp = f.door.map(p => cubeProj(p, b)); g.beginPath(); dp.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fillStyle = '#5b4a38'; g.fill(); g.lineWidth = 0.8; g.stroke(); const kn = cubeProj([0.12, -HD, HB + 0.36], b); g.fillStyle = '#d9c9a8'; g.beginPath(); g.arc(kn[0], kn[1], 0.9, 0, Math.PI * 2); g.fill(); }
   }
+  if (CUBE.hover && CUBE.hover.c) { const q = cubeProj(CUBE.hover.c.p, b); g.fillStyle = 'rgba(198,255,26,.85)'; g.strokeStyle = '#1B1D21'; g.lineWidth = 1; g.beginPath(); g.arc(q[0], q[1], 4.5, 0, Math.PI * 2); g.fill(); g.stroke(); }
+  cubeAxes(g, b, true);
 }
 function cubeRegion(ev) {
   const r = $('vcube').getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, b = cubeBasis();
-  const vis = CF.filter(f => V.dot(f.n, b.f) > 0.02).sort((p, q) => V.dot(q.n, b.f) - V.dot(p.n, b.f));
-  for (const f of vis) {
-    const c0 = cubeProj(f.n, b), ux = V.dot(f.u, b.r) * CS, uy = -V.dot(f.u, b.u) * CS, vx = V.dot(f.v, b.r) * CS, vy = -V.dot(f.v, b.u) * CS, den = ux * vy - uy * vx; if (Math.abs(den) < 1e-6) continue;
-    const dx = x - c0[0], dy = y - c0[1], s = (dx * vy - dy * vx) / den, t = (ux * dy - uy * dx) / den;
-    if (Math.abs(s) <= 1 && Math.abs(t) <= 1) return { f, s: Math.abs(s) > 0.6 ? Math.sign(s) : 0, t: Math.abs(t) > 0.6 ? Math.sign(t) : 0 };
-  }
+  const inside = (pts) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], d = pts[j]; if ((a[1] > y) !== (d[1] > y) && x < (d[0] - a[0]) * (y - a[1]) / (d[1] - a[1]) + a[0]) c = !c; } return c; };
+  const C0 = [0, 0, (HB + HR) / 2]; let best = null, bd = 49;
+  for (const c of HCORN) { if (V.dot(V.sub(c.p, C0), b.f) <= 0) continue; const q = cubeProj(c.p, b), dd = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (dd < bd) { bd = dd; best = c; } }
+  if (best) return { c: best, dir: best.d, tri: true, t: best.t };
+  const vis = houseFaces(b).reverse();
+  for (const f of vis) if (inside(f.v.map(p => cubeProj(p, b)))) return { f, dir: f.d };
   return null;
 }
 function goDir(d) { const l = V.len(d); if (CAM.proj === 'mil' || CAM.proj === 'cav') CAM.proj = 'axo'; animateCam({ theta: Math.abs(d[0]) + Math.abs(d[1]) < 1e-6 ? -Math.PI / 2 : Math.atan2(d[1], d[0]), phi: Math.max(0.0005, Math.min(Math.PI - 0.0005, Math.acos(d[2] / l))) }); syncUI(); }
@@ -448,13 +507,12 @@ function goDir(d) { const l = V.len(d); if (CAM.proj === 'mil' || CAM.proj === '
   cv.addEventListener('pointerdown', ev => { ev.stopPropagation(); cv.setPointerCapture(ev.pointerId); CUBE.drag = { x: ev.clientX, y: ev.clientY, moved: 0 }; });
   cv.addEventListener('pointermove', ev => {
     if (CUBE.drag) { const dx = ev.clientX - CUBE.drag.x, dy = ev.clientY - CUBE.drag.y; CUBE.drag.x = ev.clientX; CUBE.drag.y = ev.clientY; CUBE.drag.moved += Math.abs(dx) + Math.abs(dy); if (CUBE.drag.moved > 3) { CUBE.hover = null; navMove('orbit', dx * 1.6, dy * 1.6); } return; }
-    CUBE.hover = cubeRegion(ev); cv.style.cursor = CUBE.hover ? 'pointer' : 'grab'; needRender = true;
+    CUBE.hover = cubeRegion(ev); cv.style.cursor = CUBE.hover ? 'pointer' : 'grab'; cv.title = CUBE.hover ? (CUBE.hover.tri ? CUBE.hover.t : 'Vista ' + CUBE.hover.f.t.toLowerCase()) : 'Arrossega per girar'; needRender = true;
   });
-  cv.addEventListener('pointerup', ev => { const d = CUBE.drag; CUBE.drag = null; if (d && d.moved <= 3) { const r = cubeRegion(ev); if (r) goDir(V.add(r.f.n, V.add(V.mul(r.f.u, r.s), V.mul(r.f.v, r.t)))); } });
+  cv.addEventListener('pointerup', ev => { const d = CUBE.drag; CUBE.drag = null; if (d && d.moved <= 3) { const r = cubeRegion(ev); if (r) { if (r.tri) CAM.proj = 'axo'; goDir(r.dir); } } });
   cv.addEventListener('pointerleave', () => { if (!CUBE.drag) { CUBE.hover = null; needRender = true; } });
   const turn = (dth, dph) => { const s = camState(), to = { theta: s.theta + dth }; if (dph) to.phi = Math.min(Math.PI - 0.05, Math.max(0.05, s.phi + dph)); animateCam(to); };
   $('vcU').onclick = () => turn(0, -Math.PI / 2); $('vcD').onclick = () => turn(0, Math.PI / 2); $('vcL').onclick = () => turn(-Math.PI / 2); $('vcR').onclick = () => turn(Math.PI / 2);
-  $('vcHome').onclick = () => { if (CAM.proj === 'mil' || CAM.proj === 'cav') CAM.proj = 'conic'; animateCam({ theta: -Math.PI / 3, phi: 1.15 }); fitView(); syncUI(); };
 })();
 
 /* ---------- vistes ---------- */
@@ -473,7 +531,7 @@ function openView(key, quiet) {
   S.view = key; if (!S.tabs.includes(key)) S.tabs.push(key);
   const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
   if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj }); if (v.style) useStyle(v.style, true); }
-  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + 1.2)); animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
+  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + vrOf(l).cut)); if (l.vr) clips.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + vrOf(l).bot - vrOf(l).depth))); animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
   else if (t === 'elev') { const e = ELEVS.find(x => x[0] === id); animateCam({ proj: 'axo', theta: e[2], phi: Math.PI / 2, t: cx, dist: fitD }); }
   else if (t === 'bsec') { const v = bsecOf(id); if (v) { const bc = bsecClips(v); clips.push(...bc.clips); animateCam({ proj: 'axo', theta: bc.theta, phi: Math.PI / 2, t: [cx[0], cx[1], cx[2]], dist: fitD }); } }
   else if (t === 'sec') { const g = S.model.grids.find(x => String(x.id) === id), d = V.norm([g.b[0] - g.a[0], g.b[1] - g.a[1], 0]), n = [d[1], -d[0], 0]; clips.push(new THREE.Plane(new THREE.Vector3(-n[0], -n[1], 0), n[0] * g.a[0] + n[1] * g.a[1] + 0.001)); animateCam({ proj: 'axo', theta: Math.atan2(n[1], n[0]), phi: Math.PI / 2, t: cx, dist: fitD }); }

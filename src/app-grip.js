@@ -5,7 +5,7 @@
    · coberta per cotes: cota de vèrtexs, arestes i punts interiors
    ============================================================ */
 const GRIP = { list: [], drag: null, sel: null, raf: 0 };
-function gripTarget() { if (S.tool !== 'select' || S.sel.groups.size !== 1 || S.sel.faces.size || S.sel.edges.size) return null; const { c, off } = ctxInfo(), g = c.groups.get([...S.sel.groups][0]); return g && g.par && ['wall', 'slab', 'roof', 'strip', 'stair'].includes(g.par.type) ? { g, c, off } : null; }
+function gripTarget() { if (S.tool === 'select' && !S.sel.groups.size && !S.sel.faces.size && !S.sel.edges.size && typeof annGripTarget === 'function') { const a = annGripTarget(); if (a) return a; } if (S.tool !== 'select' || S.sel.groups.size !== 1 || S.sel.faces.size || S.sel.edges.size) return null; const { c, off } = ctxInfo(), g = c.groups.get([...S.sel.groups][0]); return g && g.par && ['wall', 'slab', 'roof', 'strip', 'stair'].includes(g.par.type) ? { g, c, off } : null; }
 function gripDefs(g, off) {
   const par = g.par, out = [], W = (q, z) => [q[0] + off[0], q[1] + off[1], z + off[2]], lvz = levelElev(S.model, par.lv);
   if (par.type === 'wall' || par.type === 'strip') { const z = par.type === 'wall' ? parZ(S.model, par).base : lvz + (par.off || 0); for (const k of ['a', 'b']) out.push({ key: 'w' + k, cls: 'v', p: W(par[k], z), mode: 'xy', z, title: 'Arrossega l’extrem (s’enganxa a punts del model)', set: q => { par[k] = q; } }); return out; }
@@ -35,7 +35,7 @@ function fmtSigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + fmt(Math.a
 function gripsRebuild() {
   let box = $('grips'); if (!box) { box = el('div'); box.id = 'grips'; $('viewWrap').appendChild(box); }
   box.innerHTML = ''; GRIP.list = []; const t = gripTarget(); if (!t) { GRIP.sel = null; return; }
-  for (const d of gripDefs(t.g, t.off)) {
+  for (const d of (t.ann ? annGripDefs(t) : gripDefs(t.g, t.off))) {
     const e = el('div', 'grip ' + d.cls + (GRIP.sel === d.key ? ' sel' : '') + (GRIP.drag && GRIP.drag.key === d.key ? ' drag' : '')); e.dataset.grip = d.key; e.title = d.title || '';
     if (d.slope) { const tg = el('button', 'tg', '◣'); tg.dataset.gtoggle = d.key; tg.onpointerdown = ev => ev.stopPropagation(); tg.onclick = ev => { ev.stopPropagation(); pushUndo(); d.slope.on = !d.slope.on; if (d.slope.on && !(d.slope.v > 0)) d.slope.v = OPT.roofSlope; GRIP.sel = d.key; refreshAll(); }; e.appendChild(tg); }
     if (d.label) { const lb = el('span', 'gv', esc(d.label())); lb.dataset.gval = d.key; lb.onpointerdown = ev => ev.stopPropagation(); lb.onclick = ev => { ev.stopPropagation(); gripEdit(d, lb); }; e.appendChild(lb); }

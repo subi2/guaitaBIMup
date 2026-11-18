@@ -1,12 +1,13 @@
 const fs=require('fs');const r=f=>fs.readFileSync(f,'utf8');
+const VER=r('src/app-core.js').match(/const VERSION = '([^']+)'/)[1];
 const lic=`<!--
 SPDX-License-Identifier: AGPL-3.0-only
-guaitaBIMup 29 — © SBS BiM Consulting, Jordi Subirós
+guaitaBIMup v${VER} — © SBS BiM Consulting, Jordi Subirós
 Inclou Three.js r160 (MIT) © 2010-2023 three.js authors.
 -->`;
 const html=`<!DOCTYPE html>
 ${lic}
-<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup 29</title>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v${VER}</title>
 <style>
 ${r('src/style.css')}
 </style><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script></head><body>
@@ -28,6 +29,8 @@ ${r('src/app-import.js')}
 ${r('src/app-export.js')}
 ${r('src/app-ctx.js')}
 ${r('src/app-bool.js')}
+${r('src/app-mod.js')}
+${r('src/app-keys.js')}
 ${r('src/app-skp.js')}
 ${r('src/app-class.js')}
 ${r('src/app-sel.js')}
@@ -40,9 +43,10 @@ ${r('src/app-stair.js')}
 ${r('src/app-bsec.js')}
 ${r('src/app-grip.js')}
 ${r('src/app-doc.js')}
+${r('src/app-dock.js')}
 ${r('src/app-ui.js')}
 </script></body></html>`;
-fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/guaitaBIMup_v0.29.html',html);
+fs.mkdirSync('out',{recursive:true});fs.writeFileSync(`out/guaitaBIMup_v${VER}.html`,html);
 // extreu JS per a node --check
 fs.writeFileSync('out/_app.js',html.split('<script>').slice(2).join('').replace(/<\/script>[\s\S]*$/,''));
 console.log('OK',(html.length/1024|0)+' kb');
