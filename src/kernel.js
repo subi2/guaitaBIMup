@@ -26,7 +26,7 @@ const K = (() => {
   function newModel() {
     const m = { format: 'guaitabimup', v: 1, units: 'm', nid: 1, root: null,
       tags: [{ id: 0, name: 'Sense etiqueta', color: '#8B939F', visible: true }],
-      materials: [], levels: [], grids: [], views: [], refs: [], sections: [], dims: [], texts: [], images: [], meta: {} };
+      materials: [], levels: [], grids: [], views: [], planViews: [], refs: [], sections: [], dims: [], texts: [], images: [], meta: {} };
     m.root = newContainer(m, 'root');
     return m;
   }
@@ -472,14 +472,14 @@ const K = (() => {
   }
   function toJSON(m) {
     return { format: 'guaitabimup', v: 1, units: m.units, nid: m.nid, meta: m.meta, tags: m.tags, materials: m.materials,
-      levels: m.levels, grids: m.grids, views: m.views, refs: m.refs, sections: m.sections, dims: m.dims, texts: m.texts, images: m.images || [], root: containerToJSON(m.root) };
+      levels: m.levels, grids: m.grids, views: m.views, planViews: m.planViews || [], refs: m.refs, sections: m.sections, dims: m.dims, texts: m.texts, images: m.images || [], root: containerToJSON(m.root) };
   }
   function fromJSON(o) {
     if (!o || (o.format !== 'guaitabimup' && o.format !== 'guaita3dsketch')) throw new Error('Format desconegut');
     const m = newModel();
     m.units = o.units || 'm'; m.nid = o.nid || 1; m.meta = o.meta || {};
     m.tags = o.tags && o.tags.length ? o.tags : m.tags; m.materials = o.materials || [];
-    m.levels = o.levels || []; m.grids = o.grids || []; m.views = o.views || [];
+    m.levels = o.levels || []; m.grids = o.grids || []; m.views = o.views || []; m.planViews = o.planViews || [];
     m.refs = o.refs || []; m.images = o.images || []; m.sections = o.sections || []; m.dims = o.dims || []; m.texts = o.texts || [];
     m.root = containerFromJSON(m, o.root, false);
     return m;

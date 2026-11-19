@@ -21,8 +21,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent);cursor:pointer
 /* ---- capçalera i menús en cascada ---- */
 header{height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:100}
 .brand{display:flex;align-items:center;gap:8px;margin-right:12px;font-family:var(--mono);font-weight:600;letter-spacing:.06em}
-.brand .cells{display:grid;grid-template-columns:repeat(2,8px);gap:2px}
-.brand .cells span{width:8px;height:8px}
+.brand .ico-house{width:24px;height:24px;flex:none;display:block}
 .brand small{color:var(--accent);font-size:13px;letter-spacing:.02em}
 .ver{background:none;border:0;color:var(--dim,#888);font-family:var(--mono);font-size:11px;cursor:pointer;padding:2px 4px;margin-right:6px}
 .ver:hover,.sbs:hover{color:var(--accent)}
@@ -122,7 +121,7 @@ header{height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;backgr
 #projBar button.on{background:var(--sel);color:var(--accent);border-color:var(--accent)}
 #navBtn{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:11.5px}
 #navBtn:hover{border-color:var(--accent)}
-#navBtn .cells{display:grid;grid-template:repeat(5,3px)/repeat(5,3px);gap:1px}#navBtn .cells span{width:3px;height:3px}
+#navBtn .ico-house{width:18px;height:18px;flex:none;display:block}
 #navPanel{display:none;width:296px;max-height:calc(100vh - 280px);overflow-y:auto;scrollbar-width:thin;box-sizing:border-box;padding:12px 14px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 36px #000b}
 #navPanel.show{display:block}
 #navPanel button{padding:0;cursor:pointer;font-family:inherit}

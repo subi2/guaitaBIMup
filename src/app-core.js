@@ -5,7 +5,7 @@
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.40.0';
+const VERSION = '0.41.a';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -88,6 +88,15 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0xb9bec6, 1.15); scene.add(hemi
 const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(30, -40, 70); scene.add(sun);
 const gGround = new THREE.Group(), gAxes = new THREE.Group(), gModel = new THREE.Group(), gAnnot = new THREE.Group(), gSel = new THREE.Group(), gPrev = new THREE.Group();
 scene.add(gGround, gAxes, gModel, gAnnot, gSel, gPrev);
+/* zona de profunditat de la vista de planta: còpia grisa de la geometria, retallada a [fons − profunditat, fons] */
+const gGhost = new THREE.Group(), matGhost = new THREE.MeshBasicMaterial({ color: 0xA9ADB3, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+scene.add(gGhost); let ghostStale = true;
+function updGhost() {
+  const P = S.planGhost && S.viewClips.length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
+  renderer.localClippingEnabled = true;
+  if (ghostStale) { gGhost.clear(); gModel.traverse(o => { if (o.isMesh && o.geometry && !(o.userData && o.userData.back)) { const m = new THREE.Mesh(o.geometry, matGhost); m.matrixAutoUpdate = false; m.matrix.copy(o.matrix); gGhost.add(m); } }); ghostStale = false; }
+  matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot)];
+}
 (function buildGround() {
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0xC7C2B2, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }));
   pl.position.z = -0.002; gGround.add(pl);
@@ -226,7 +235,7 @@ function buildContainer(c, off, path, st) {
   }
 }
 function rebuild() {
-  disposeGroup(gModel); pickMeshes = []; SNAP = { verts: [], edges: [] };
+  disposeGroup(gModel); ghostStale = true; pickMeshes = []; SNAP = { verts: [], edges: [] };
   applyStyleEnv();
   bsecBar();
   buildContainer(S.model.root, [0, 0, 0], [], { color: null, ecol: null });
@@ -516,6 +525,6 @@ function frame(now) {
   if (camAnim) stepAnim(now);
   if (!needRender) return; needRender = false;
   gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
-  updSil(); updBackCorner(); if (renderer) renderer.render(scene, cam);
+  updSil(); updBackCorner(); updGhost(); if (renderer) renderer.render(scene, cam);
   updLabels(); gripsUpdate(); drawCube();
 }

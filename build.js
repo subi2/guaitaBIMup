@@ -7,10 +7,10 @@ Inclou Three.js r160 (MIT) © 2010-2023 three.js authors.
 -->`;
 const html=`<!DOCTYPE html>
 ${lic}
-<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v${VER}</title>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v${VER}</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
 <style>
 ${r('src/style.css')}
-</style><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script></head><body>
+</style></head><body>
 ${r('src/body.html')}
 <script>/* three.js r160 — MIT License — Copyright © 2010-2023 three.js authors */
 ${r('dist/three.bundle.js').replace(/<\/script/g,'<\\/script')}

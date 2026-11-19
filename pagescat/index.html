@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
 SPDX-License-Identifier: AGPL-3.0-only
-guaitaBIMup v0.40.0 — © SBS BiM Consulting, Jordi Subirós
+guaitaBIMup v0.41.a — © SBS BiM Consulting, Jordi Subirós
 Inclou Three.js r160 (MIT) © 2010-2023 three.js authors.
 -->
-<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.40.0</title>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.41.a</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
 <style>
 :root{
   --ink:#0E1116; --panel:#171B21; --panel-2:#1E232B; --panel-3:#252B34; --line:#2A313B;
@@ -29,8 +29,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent);cursor:pointer
 /* ---- capçalera i menús en cascada ---- */
 header{height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:100}
 .brand{display:flex;align-items:center;gap:8px;margin-right:12px;font-family:var(--mono);font-weight:600;letter-spacing:.06em}
-.brand .cells{display:grid;grid-template-columns:repeat(2,8px);gap:2px}
-.brand .cells span{width:8px;height:8px}
+.brand .ico-house{width:24px;height:24px;flex:none;display:block}
 .brand small{color:var(--accent);font-size:13px;letter-spacing:.02em}
 .ver{background:none;border:0;color:var(--dim,#888);font-family:var(--mono);font-size:11px;cursor:pointer;padding:2px 4px;margin-right:6px}
 .ver:hover,.sbs:hover{color:var(--accent)}
@@ -130,7 +129,7 @@ header{height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;backgr
 #projBar button.on{background:var(--sel);color:var(--accent);border-color:var(--accent)}
 #navBtn{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:11.5px}
 #navBtn:hover{border-color:var(--accent)}
-#navBtn .cells{display:grid;grid-template:repeat(5,3px)/repeat(5,3px);gap:1px}#navBtn .cells span{width:3px;height:3px}
+#navBtn .ico-house{width:18px;height:18px;flex:none;display:block}
 #navPanel{display:none;width:296px;max-height:calc(100vh - 280px);overflow-y:auto;scrollbar-width:thin;box-sizing:border-box;padding:12px 14px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 36px #000b}
 #navPanel.show{display:block}
 #navPanel button{padding:0;cursor:pointer;font-family:inherit}
@@ -274,9 +273,9 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--panel-3);border:1px 
 
 .tab2 .tabre{margin-left:5px;padding:0 3px;border:1px solid var(--line);border-radius:3px;font-size:10px;line-height:13px;display:inline-block;color:var(--accent)}.tab2 .tabre:hover{background:var(--accent);color:#000}
 
-</style><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script></head><body>
+</style></head><body>
 <header>
-  <div class="brand"><span class="cells"><span style="background:#C6FF00"></span><span style="background:#FF2ECC"></span><span style="background:#00E5FF"></span><span style="background:#FFE500"></span></span><span>GUAITA<small>BIMup</small></span></div>
+  <div class="brand"><svg class="ico-house" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#111318"/><polygon points="110,250 250,250 250,110 110,170" fill="#D7F74A"/><polygon points="262,250 402,250 402,170 262,110" fill="#FF2DCB"/><rect x="110" y="262" width="140" height="140" fill="#00E5FF"/><rect x="262" y="262" width="140" height="140" fill="#FFE100"/></svg><span>GUAITA<small>BIMup</small></span></div>
   <button class="ver" id="verTag" title="Quant a guaitaBIMup"></button>
   <nav id="menubar"></nav>
   <div class="sp"></div>
@@ -299,7 +298,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--panel-3);border:1px 
       <div id="cubeWrap"><canvas id="vcube" width="240" height="240"></canvas>
         <button class="vca" id="vcU" style="left:49px;top:-2px" title="Gira 90° amunt" aria-label="Gira 90° amunt"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M12 5l-7 8h14z"/></svg></button><button class="vca" id="vcD" style="left:49px;bottom:-2px" title="Gira 90° avall" aria-label="Gira 90° avall"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M12 19l7-8H5z"/></svg></button><button class="vca" id="vcL" style="top:49px;left:-2px" title="Gira 90° a l’esquerra" aria-label="Gira 90° a l’esquerra"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M5 12l8-7v14z"/></svg></button><button class="vca" id="vcR" style="top:49px;right:-2px" title="Gira 90° a la dreta" aria-label="Gira 90° a la dreta"><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:var(--accent)"><path d="M19 12l-8 7V5z"/></svg></button>
 </div>
-      <button id="navBtn" title="Navegació, projecció i vistes"><span class="cells"><span style="grid-area:1/3;background:#FF2ECC"></span><span style="grid-area:2/2;background:#FF2ECC"></span><span style="grid-area:2/3;background:#FF2ECC"></span><span style="grid-area:2/4;background:#FF2ECC"></span><span style="grid-area:3/1;background:#FF2ECC"></span><span style="grid-area:3/2;background:#FF2ECC"></span><span style="grid-area:3/3;background:#FF2ECC"></span><span style="grid-area:3/4;background:#FF2ECC"></span><span style="grid-area:3/5;background:#FF2ECC"></span><span style="grid-area:4/1;background:#C6FF00"></span><span style="grid-area:4/2;background:#C6FF00"></span><span style="grid-area:4/3;background:#C6FF00"></span><span style="grid-area:4/4;background:#C6FF00"></span><span style="grid-area:4/5;background:#C6FF00"></span><span style="grid-area:5/1;background:#C6FF00"></span><span style="grid-area:5/2;background:#C6FF00"></span><span style="grid-area:5/4;background:#C6FF00"></span><span style="grid-area:5/5;background:#C6FF00"></span><span style="grid-area:5/3;background:#FFE500"></span></span><span id="navBtnTxt">Cònica</span><span class="dim">▾</span></button>
+      <button id="navBtn" title="Navegació, projecció i vistes"><svg class="ico-house" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#111318"/><polygon points="110,250 250,250 250,110 110,170" fill="#D7F74A"/><polygon points="262,250 402,250 402,170 262,110" fill="#FF2DCB"/><rect x="110" y="262" width="140" height="140" fill="#00E5FF"/><rect x="262" y="262" width="140" height="140" fill="#FFE100"/></svg><span id="navBtnTxt">Cònica</span><span class="dim">▾</span></button>
       <div id="navPanel"></div>
     </div>
     <div id="tip"><span class="d"></span><span class="t"></span><b></b></div>
@@ -4713,7 +4712,7 @@ const K = (() => {
   function newModel() {
     const m = { format: 'guaitabimup', v: 1, units: 'm', nid: 1, root: null,
       tags: [{ id: 0, name: 'Sense etiqueta', color: '#8B939F', visible: true }],
-      materials: [], levels: [], grids: [], views: [], refs: [], sections: [], dims: [], texts: [], images: [], meta: {} };
+      materials: [], levels: [], grids: [], views: [], planViews: [], refs: [], sections: [], dims: [], texts: [], images: [], meta: {} };
     m.root = newContainer(m, 'root');
     return m;
   }
@@ -5159,14 +5158,14 @@ const K = (() => {
   }
   function toJSON(m) {
     return { format: 'guaitabimup', v: 1, units: m.units, nid: m.nid, meta: m.meta, tags: m.tags, materials: m.materials,
-      levels: m.levels, grids: m.grids, views: m.views, refs: m.refs, sections: m.sections, dims: m.dims, texts: m.texts, images: m.images || [], root: containerToJSON(m.root) };
+      levels: m.levels, grids: m.grids, views: m.views, planViews: m.planViews || [], refs: m.refs, sections: m.sections, dims: m.dims, texts: m.texts, images: m.images || [], root: containerToJSON(m.root) };
   }
   function fromJSON(o) {
     if (!o || (o.format !== 'guaitabimup' && o.format !== 'guaita3dsketch')) throw new Error('Format desconegut');
     const m = newModel();
     m.units = o.units || 'm'; m.nid = o.nid || 1; m.meta = o.meta || {};
     m.tags = o.tags && o.tags.length ? o.tags : m.tags; m.materials = o.materials || [];
-    m.levels = o.levels || []; m.grids = o.grids || []; m.views = o.views || [];
+    m.levels = o.levels || []; m.grids = o.grids || []; m.views = o.views || []; m.planViews = o.planViews || [];
     m.refs = o.refs || []; m.images = o.images || []; m.sections = o.sections || []; m.dims = o.dims || []; m.texts = o.texts || [];
     m.root = containerFromJSON(m, o.root, false);
     return m;
@@ -5199,7 +5198,7 @@ const K = (() => {
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.40.0';
+const VERSION = '0.41.a';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -5282,6 +5281,15 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0xb9bec6, 1.15); scene.add(hemi
 const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(30, -40, 70); scene.add(sun);
 const gGround = new THREE.Group(), gAxes = new THREE.Group(), gModel = new THREE.Group(), gAnnot = new THREE.Group(), gSel = new THREE.Group(), gPrev = new THREE.Group();
 scene.add(gGround, gAxes, gModel, gAnnot, gSel, gPrev);
+/* zona de profunditat de la vista de planta: còpia grisa de la geometria, retallada a [fons − profunditat, fons] */
+const gGhost = new THREE.Group(), matGhost = new THREE.MeshBasicMaterial({ color: 0xA9ADB3, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+scene.add(gGhost); let ghostStale = true;
+function updGhost() {
+  const P = S.planGhost && S.viewClips.length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
+  renderer.localClippingEnabled = true;
+  if (ghostStale) { gGhost.clear(); gModel.traverse(o => { if (o.isMesh && o.geometry && !(o.userData && o.userData.back)) { const m = new THREE.Mesh(o.geometry, matGhost); m.matrixAutoUpdate = false; m.matrix.copy(o.matrix); gGhost.add(m); } }); ghostStale = false; }
+  matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot)];
+}
 (function buildGround() {
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0xC7C2B2, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }));
   pl.position.z = -0.002; gGround.add(pl);
@@ -5420,7 +5428,7 @@ function buildContainer(c, off, path, st) {
   }
 }
 function rebuild() {
-  disposeGroup(gModel); pickMeshes = []; SNAP = { verts: [], edges: [] };
+  disposeGroup(gModel); ghostStale = true; pickMeshes = []; SNAP = { verts: [], edges: [] };
   applyStyleEnv();
   bsecBar();
   buildContainer(S.model.root, [0, 0, 0], [], { color: null, ecol: null });
@@ -5710,7 +5718,7 @@ function frame(now) {
   if (camAnim) stepAnim(now);
   if (!needRender) return; needRender = false;
   gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
-  updSil(); updBackCorner(); if (renderer) renderer.render(scene, cam);
+  updSil(); updBackCorner(); updGhost(); if (renderer) renderer.render(scene, cam);
   updLabels(); gripsUpdate(); drawCube();
 }
 
@@ -6245,9 +6253,9 @@ function viewName(key) {
 function openView(key, quiet) {
   const [t, id] = key.split(':'); if (viewName(key) == null) return;
   S.view = key; if (!S.tabs.includes(key)) S.tabs.push(key);
-  const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
+  S.planGhost = null; const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
   if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj }); if (v.style) useStyle(v.style, true); }
-  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + vrOf(l).cut)); if (l.vr) clips.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + vrOf(l).bot - vrOf(l).depth))); animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
+  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; const pv = vrOf(l); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + pv.cut)); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + pv.bot))); if (pv.depth > 0) S.planGhost = { lvl: l.id, elev: l.elev, bot: pv.bot, depth: pv.depth }; animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
   else if (t === 'elev') { const e = ELEVS.find(x => x[0] === id); animateCam({ proj: 'axo', theta: e[2], phi: Math.PI / 2, t: cx, dist: fitD }); }
   else if (t === 'bsec') { const v = bsecOf(id); if (v) { const bc = bsecClips(v); clips.push(...bc.clips); animateCam({ proj: 'axo', theta: bc.theta, phi: Math.PI / 2, t: [cx[0], cx[1], cx[2]], dist: fitD }); } }
   else if (t === 'sec') { const g = S.model.grids.find(x => String(x.id) === id), d = V.norm([g.b[0] - g.a[0], g.b[1] - g.a[1], 0]), n = [d[1], -d[0], 0]; clips.push(new THREE.Plane(new THREE.Vector3(-n[0], -n[1], 0), n[0] * g.a[0] + n[1] * g.a[1] + 0.001)); animateCam({ proj: 'axo', theta: Math.atan2(n[1], n[0]), phi: Math.PI / 2, t: cx, dist: fitD }); }
@@ -6284,7 +6292,7 @@ function boxPlanes() {
   }
   return out;
 }
-function applyClips() { if (!renderer) return; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
+function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
 
 /* ---------- nivell de treball ---------- */
 function setLevel(id) { if (!S.model.levels.some(l => l.id === id)) return; S.level = id; const l = S.model.levels.find(x => x.id === id); refreshAll(); toast('Nivell de treball: ' + l.name + ' (' + fmtElev(l.elev) + ')'); }
@@ -6747,7 +6755,18 @@ function sectionBoxPanel() {
 
 /* ---------- v0.40 · elements editables (nivells i eixos) i rang de vista de plantes ---------- */
 /* rang de vista d'un nivell (com a Revit): pla de tall, fons del rang principal i profunditat de vista; tot en m respecte al nivell */
-function vrOf(l) { const v = (l && l.vr) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(v.cut) != null ? v.cut : 1.2, bot: n(v.bot) != null ? v.bot : 0, depth: n(v.depth) != null ? v.depth : 0.1 }; }
+/* fletxes: amb un eix d'edició seleccionat, forcen la seva direcció (horitzontal/vertical) i conserven la longitud */
+window.addEventListener('keydown', ev => {
+  if (!/^Arrow(Up|Down|Left|Right)$/.test(ev.key) || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  if (ev.target && /INPUT|TEXTAREA|SELECT/.test(ev.target.tagName)) return;
+  const t = typeof annGripTarget === 'function' ? annGripTarget() : null; if (!t || t.ann !== 'grid') return;
+  const g = t.gr, dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key], len = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+  ev.preventDefault(); pushUndo(); g.b = [g.a[0] + dir[0] * len, g.a[1] + dir[1] * len]; refreshAll();
+});
+/* vista de planta (Revit): el rang pertany a la vista, que té un nivell associat; el nivell només aporta l'elevació */
+function pvOf(l) { return (S.model.planViews || []).find(p => p.lvl === l.id) || null; }
+function pvSet(l, v) { S.model.planViews = S.model.planViews || []; let p = pvOf(l); if (!p) { p = { lvl: l.id }; S.model.planViews.push(p); } Object.assign(p, v); delete l.vr; }
+function vrOf(l) { const p = pvOf(l) || (l && l.vr) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(p.cut) != null ? p.cut : 1.2, bot: n(p.bot) != null ? p.bot : 0, depth: n(p.depth) != null ? p.depth : 0.1 }; }
 function vrFar(l) { const v = vrOf(l); return Math.max(0.01, v.cut - v.bot + v.depth); }
 function levelSetElev(l, v) {
   const dz = v - l.elev; l.elev = v;
@@ -6762,7 +6781,7 @@ function annGripDefs(t) {
     out.push({ key: 'lz', cls: 'z', p: [e.x0, e.y0, l.elev], mode: 'z', z: l.elev, label: () => fmtElev(l.elev), get: () => l.elev, setZ: v => { levelSetElev(l, Math.round(v * 1000) / 1000); }, title: 'Arrossega: elevació del nivell (arrossega els grups assignats) · clic al valor: escriu-la · doble clic a l’etiqueta: edita' });
     return out; }
   const g = t.gr, z = workZ(), m = [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2], a0 = g.a.slice(), b0 = g.b.slice();
-  for (const k of ['a', 'b']) out.push({ key: 'g' + k, cls: 'v', p: [g[k][0], g[k][1], z], mode: 'xy', z, title: 'Arrossega l’extrem de l’eix (s’enganxa a punts del model)', set: q => { g[k] = q; } });
+  for (const k of ['a', 'b']) out.push({ key: 'g' + k, cls: 'v', p: [g[k][0], g[k][1], z], mode: 'xy', alt: 'orth', z, other: () => g[k === 'a' ? 'b' : 'a'], title: 'Arrossega l’extrem de l’eix (s’enganxa a punts del model) · Maj: força horitzontal o vertical · fletxes: direcció', set: q => { g[k] = q; } });
   out.push({ key: 'gm', cls: 'e', p: [m[0], m[1], z], mode: 'xy', z, title: 'Arrossega per moure tot l’eix', set: q => { const dx = q[0] - m[0], dy = q[1] - m[1]; g.a = [a0[0] + dx, a0[1] + dy]; g.b = [b0[0] + dx, b0[1] + dy]; } });
   return out;
 }
@@ -6777,7 +6796,7 @@ function annEditDlg(kind, o) {
   if (kind === 'lvls') q('aeR').onclick = () => { q('aeC').value = '1.2'; q('aeB').value = '0'; q('aeD').value = '0.1'; };
   q('aeOk').onclick = () => {
     if (kind === 'lvls') { const z = parseNum(q('aeZ').value), c = parseNum(q('aeC').value), b = parseNum(q('aeB').value), d = parseNum(q('aeD').value); if (z == null || c == null || b == null || d == null || d < 0 || c <= b) { toast('Valors no vàlids: el pla de tall ha de ser sobre el fons i la profunditat ≥ 0.'); return; }
-      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); o.vr = { cut: c, bot: b, depth: d }; }
+      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); pvSet(o, { cut: c, bot: b, depth: d }); }
     else { const v = ['aeAx', 'aeAy', 'aeBx', 'aeBy'].map(i => parseNum(q(i).value)); if (v.some(x => x == null) || (v[0] === v[2] && v[1] === v[3])) { toast('Coordenades no vàlides.'); return; }
       pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); o.a = [v[0], v[1]]; o.b = [v[2], v[3]]; }
     close(); refreshAll();
@@ -9862,6 +9881,7 @@ function gripMove(ev) {
   if (D.mode === 'z') { const s0 = toScreen(D.d.p), s1 = toScreen([D.d.p[0], D.d.p[1], D.d.p[2] + 1]), u = [s1.x - s0.x, s1.y - s0.y], uu = u[0] * u[0] + u[1] * u[1] || 1; let v = D.v0 + ((mx - D.m0[0]) * u[0] + (my - D.m0[1]) * u[1]) / uu; if (!ev.ctrlKey) v = Math.round(v * 100) / 100; D.d.setZ(v); D.last = v; tip = 'Cota ' + fmtSigned(v) + ' m'; }
   else { const ray = mouseRay(mx, my), z = D.d.z + D.off[2]; let q = null; if (Math.abs(ray.d[2]) > 1e-6) { const k = (z - ray.o[2]) / ray.d[2]; q = [ray.o[0] + ray.d[0] * k, ray.o[1] + ray.d[1] * k]; }
     const pk = ev.ctrlKey ? null : gripSnap(mx, my, D.d); if (pk) { q = [pk.p[0], pk.p[1]]; tip = pk.label; } if (!q) return; if (!pk) q = [Math.round(q[0] * 1000) / 1000, Math.round(q[1] * 1000) / 1000];
+    if (!pk && D.mode === 'orth' && D.d.other) { const o = D.d.other(), dx = q[0] - o[0], dy = q[1] - o[1]; q = Math.abs(dx) >= Math.abs(dy) ? [q[0], o[1]] : [o[0], q[1]]; tip = Math.abs(dx) >= Math.abs(dy) ? 'Horitzontal' : 'Vertical'; }
     D.d.set([q[0] - D.off[0], q[1] - D.off[1]]); D.last = q; }
   if (!GRIP.raf) GRIP.raf = requestAnimationFrame(() => { GRIP.raf = 0; refreshAll(); if (tip) { const G = GRIP.list.find(x => x.d.key === D.key); if (G) { const tp = el('span', 'gtip', esc(tip)); G.el.appendChild(tp); } } });
 }

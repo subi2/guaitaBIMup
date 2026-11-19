@@ -71,6 +71,7 @@ function gripMove(ev) {
   if (D.mode === 'z') { const s0 = toScreen(D.d.p), s1 = toScreen([D.d.p[0], D.d.p[1], D.d.p[2] + 1]), u = [s1.x - s0.x, s1.y - s0.y], uu = u[0] * u[0] + u[1] * u[1] || 1; let v = D.v0 + ((mx - D.m0[0]) * u[0] + (my - D.m0[1]) * u[1]) / uu; if (!ev.ctrlKey) v = Math.round(v * 100) / 100; D.d.setZ(v); D.last = v; tip = 'Cota ' + fmtSigned(v) + ' m'; }
   else { const ray = mouseRay(mx, my), z = D.d.z + D.off[2]; let q = null; if (Math.abs(ray.d[2]) > 1e-6) { const k = (z - ray.o[2]) / ray.d[2]; q = [ray.o[0] + ray.d[0] * k, ray.o[1] + ray.d[1] * k]; }
     const pk = ev.ctrlKey ? null : gripSnap(mx, my, D.d); if (pk) { q = [pk.p[0], pk.p[1]]; tip = pk.label; } if (!q) return; if (!pk) q = [Math.round(q[0] * 1000) / 1000, Math.round(q[1] * 1000) / 1000];
+    if (!pk && D.mode === 'orth' && D.d.other) { const o = D.d.other(), dx = q[0] - o[0], dy = q[1] - o[1]; q = Math.abs(dx) >= Math.abs(dy) ? [q[0], o[1]] : [o[0], q[1]]; tip = Math.abs(dx) >= Math.abs(dy) ? 'Horitzontal' : 'Vertical'; }
     D.d.set([q[0] - D.off[0], q[1] - D.off[1]]); D.last = q; }
   if (!GRIP.raf) GRIP.raf = requestAnimationFrame(() => { GRIP.raf = 0; refreshAll(); if (tip) { const G = GRIP.list.find(x => x.d.key === D.key); if (G) { const tp = el('span', 'gtip', esc(tip)); G.el.appendChild(tp); } } });
 }

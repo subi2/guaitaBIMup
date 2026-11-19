@@ -22,7 +22,7 @@ function boxPlanes() {
   }
   return out;
 }
-function applyClips() { if (!renderer) return; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
+function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
 
 /* ---------- nivell de treball ---------- */
 function setLevel(id) { if (!S.model.levels.some(l => l.id === id)) return; S.level = id; const l = S.model.levels.find(x => x.id === id); refreshAll(); toast('Nivell de treball: ' + l.name + ' (' + fmtElev(l.elev) + ')'); }
@@ -485,7 +485,18 @@ function sectionBoxPanel() {
 
 /* ---------- v0.40 · elements editables (nivells i eixos) i rang de vista de plantes ---------- */
 /* rang de vista d'un nivell (com a Revit): pla de tall, fons del rang principal i profunditat de vista; tot en m respecte al nivell */
-function vrOf(l) { const v = (l && l.vr) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(v.cut) != null ? v.cut : 1.2, bot: n(v.bot) != null ? v.bot : 0, depth: n(v.depth) != null ? v.depth : 0.1 }; }
+/* fletxes: amb un eix d'edició seleccionat, forcen la seva direcció (horitzontal/vertical) i conserven la longitud */
+window.addEventListener('keydown', ev => {
+  if (!/^Arrow(Up|Down|Left|Right)$/.test(ev.key) || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  if (ev.target && /INPUT|TEXTAREA|SELECT/.test(ev.target.tagName)) return;
+  const t = typeof annGripTarget === 'function' ? annGripTarget() : null; if (!t || t.ann !== 'grid') return;
+  const g = t.gr, dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key], len = Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]);
+  ev.preventDefault(); pushUndo(); g.b = [g.a[0] + dir[0] * len, g.a[1] + dir[1] * len]; refreshAll();
+});
+/* vista de planta (Revit): el rang pertany a la vista, que té un nivell associat; el nivell només aporta l'elevació */
+function pvOf(l) { return (S.model.planViews || []).find(p => p.lvl === l.id) || null; }
+function pvSet(l, v) { S.model.planViews = S.model.planViews || []; let p = pvOf(l); if (!p) { p = { lvl: l.id }; S.model.planViews.push(p); } Object.assign(p, v); delete l.vr; }
+function vrOf(l) { const p = pvOf(l) || (l && l.vr) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(p.cut) != null ? p.cut : 1.2, bot: n(p.bot) != null ? p.bot : 0, depth: n(p.depth) != null ? p.depth : 0.1 }; }
 function vrFar(l) { const v = vrOf(l); return Math.max(0.01, v.cut - v.bot + v.depth); }
 function levelSetElev(l, v) {
   const dz = v - l.elev; l.elev = v;
@@ -500,7 +511,7 @@ function annGripDefs(t) {
     out.push({ key: 'lz', cls: 'z', p: [e.x0, e.y0, l.elev], mode: 'z', z: l.elev, label: () => fmtElev(l.elev), get: () => l.elev, setZ: v => { levelSetElev(l, Math.round(v * 1000) / 1000); }, title: 'Arrossega: elevació del nivell (arrossega els grups assignats) · clic al valor: escriu-la · doble clic a l’etiqueta: edita' });
     return out; }
   const g = t.gr, z = workZ(), m = [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2], a0 = g.a.slice(), b0 = g.b.slice();
-  for (const k of ['a', 'b']) out.push({ key: 'g' + k, cls: 'v', p: [g[k][0], g[k][1], z], mode: 'xy', z, title: 'Arrossega l’extrem de l’eix (s’enganxa a punts del model)', set: q => { g[k] = q; } });
+  for (const k of ['a', 'b']) out.push({ key: 'g' + k, cls: 'v', p: [g[k][0], g[k][1], z], mode: 'xy', alt: 'orth', z, other: () => g[k === 'a' ? 'b' : 'a'], title: 'Arrossega l’extrem de l’eix (s’enganxa a punts del model) · Maj: força horitzontal o vertical · fletxes: direcció', set: q => { g[k] = q; } });
   out.push({ key: 'gm', cls: 'e', p: [m[0], m[1], z], mode: 'xy', z, title: 'Arrossega per moure tot l’eix', set: q => { const dx = q[0] - m[0], dy = q[1] - m[1]; g.a = [a0[0] + dx, a0[1] + dy]; g.b = [b0[0] + dx, b0[1] + dy]; } });
   return out;
 }
@@ -515,7 +526,7 @@ function annEditDlg(kind, o) {
   if (kind === 'lvls') q('aeR').onclick = () => { q('aeC').value = '1.2'; q('aeB').value = '0'; q('aeD').value = '0.1'; };
   q('aeOk').onclick = () => {
     if (kind === 'lvls') { const z = parseNum(q('aeZ').value), c = parseNum(q('aeC').value), b = parseNum(q('aeB').value), d = parseNum(q('aeD').value); if (z == null || c == null || b == null || d == null || d < 0 || c <= b) { toast('Valors no vàlids: el pla de tall ha de ser sobre el fons i la profunditat ≥ 0.'); return; }
-      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); o.vr = { cut: c, bot: b, depth: d }; }
+      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); pvSet(o, { cut: c, bot: b, depth: d }); }
     else { const v = ['aeAx', 'aeAy', 'aeBx', 'aeBy'].map(i => parseNum(q(i).value)); if (v.some(x => x == null) || (v[0] === v[2] && v[1] === v[3])) { toast('Coordenades no vàlides.'); return; }
       pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); o.a = [v[0], v[1]]; o.b = [v[2], v[3]]; }
     close(); refreshAll();

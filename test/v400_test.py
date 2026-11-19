@@ -29,11 +29,11 @@ with sync_playwright() as p:
     # diàleg nivell + rang de vista
     ev("annEditDlg('lvls',S.model.levels.find(x=>x.id==%d))"%l); pg.fill("#aeN","Planta 1"); pg.fill("#aeZ","3.2"); pg.fill("#aeC","1.5"); pg.fill("#aeB","0.2"); pg.fill("#aeD","0.5"); pg.click("#aeOk"); pg.wait_for_timeout(200)
     L=ev("S.model.levels.find(x=>x.id==%d)"%l)
-    chk(L['name']=='Planta 1' and L['elev']==3.2 and L['vr']=={'cut':1.5,'bot':0.2,'depth':0.5},'diàleg nivell %s'%L)
+    chk(L['name']=='Planta 1' and L['elev']==3.2 and ev("JSON.stringify(vrOf(S.model.levels.find(x=>x.id==%d)))"%l)=='{"cut":1.5,"bot":0.2,"depth":0.5}','diàleg nivell %s'%L)
     chk(abs(ev("vrFar(S.model.levels.find(x=>x.id==%d))"%l)-1.8)<1e-9,'far = cut-bot+depth')
     chk(ev("docView('plan:%d').o[2]"%l)==3.2+1.5 and abs(ev("docView('plan:%d').far"%l)-1.8)<1e-9,'docView usa el rang')
     d=ev("vrFar(S.model.levels[0])"); chk(abs(d-1.3)<1e-9,'rang per defecte = 1.3 (compatible)')
-    chk(ev("JSON.stringify(K.toJSON(S.model)).includes('\"vr\"')"),'rang desat al JSON')
+    chk(ev("JSON.stringify(K.toJSON(S.model)).includes('planViews')"),'rang desat al JSON')
     # eix editable
     ev("createGrid([0,0,0],[10,0,0])"); g=ev("S.model.grids[0].id")
     ev("S.selAnn.lvls.clear();S.selAnn.grids.clear();S.selAnn.grids.add(%d);rebuildAnnot()"%g); pg.wait_for_timeout(200)
