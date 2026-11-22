@@ -162,7 +162,7 @@ function stairPanel(b, g, h) {
   if (par.shape === 'U') num('Ull d’escala (m)', 'gap', 0, 3);
   num('Rotació (°)', 'rot', -360, 360);
   const ck = (lab, key, cb) => { const i = el('input'); i.type = 'checkbox'; i.checked = par[key] !== false; i.dataset.par = key; i.onchange = () => up(() => { par[key] = i.checked; cb && cb(); }); return row(lab, i); };
-  ck('Contrapetges automàtiques', 'nAuto', () => { if (!par.nAuto) par.n = I.n; }); if (par.nAuto === false) num('Contrapetges', 'n', 2, 80);
+  ck('Contrapetges automàtiques', 'nAuto', () => { if (!par.nAuto) par.n = I.n; }); if (par.nAuto === false) { const r = num('Num. contrapetges', 'n', 2, 80), i = r.querySelector ? r.querySelector('input') : null, inp = i || b.querySelector('[data-par=n]'); if (inp) { inp.step = 1; inp.min = 2; inp.inputMode = 'numeric'; inp.value = Math.round(par.n); inp.onkeydown = e => { if (['.', ',', '-', 'e', 'E', '+'].includes(e.key)) e.preventDefault(); }; inp.onchange = () => { const v = Math.round(Math.abs(parseFloat(inp.value))); if (!isFinite(v) || v < 2) { inp.value = Math.round(par.n); toast('Num. contrapetges: cal un enter de 2 a 80.'); return; } up(() => { par.n = Math.min(80, v); }); }; } }
   /* v26 · replans: una recta pot tenir replans (automàtics o triats); la L i la U tenen el seu replà de gir */
   if (par.shape === 'I') sel('Replans', 'lands', [['0', 'Cap (recta)'], ['auto', 'Automàtic (CTE)'], ['1', '1 replà'], ['2', '2 replans'], ['3', '3 replans']], v => { par.lands = v === 'auto' ? 'auto' : +v; });
   if (par.shape !== 'I' || (I.counts.length > 1)) {

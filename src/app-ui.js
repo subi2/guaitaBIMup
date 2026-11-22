@@ -10,6 +10,8 @@ const G = {
   line: ['M4 20L20 4', 'M4 20L20 4', '', [[4, 20], [20, 4]]],
   wall: ['', 'M4 9h16v6H4z', 'M4 9h16v6H4z', [[4, 9], [20, 15]]],
   slab: ['', 'M3 14h18v4H3z', 'M3 14h18v4H3z', [[3, 14], [21, 18]]],
+  door: ['', 'M6 3h12v18H6zM15 12h1', 'M6 3h12v18H6z', [[6, 3], [18, 21]]],
+  win: ['', 'M5 4h14v16H5zM12 4v16M5 12h14', 'M5 4h14v16H5z', [[5, 4], [19, 20]]],
   comp: ['M12 3v18M3 12h18', 'M5 5h14v14H5z', 'M5 5h14v14H5z', [[5, 5], [19, 19]]],
   roof: ['M3 13L12 5l9 8', 'M3 13L12 5l9 8v3L12 8l-9 8z', 'M3 13L12 5l9 8v3L12 8l-9 8z', [[3, 13], [12, 5], [21, 13]]],
   roofpt: ['M12 8v8M8 12h8', '', '', [[12, 12]]],
@@ -57,6 +59,10 @@ const G = {
   text: ['', 'M5 6h14M12 6v13M9 19h6', '', []],
   section: ['M4 7l8-3 8 3v10l-8 3-8-3z', 'M3 12h18', '', []],
   zoomwin: ['M4 4h10v10H4z M20 20l-5-5', 'M7 7h4v4H7z', '', []],
+  campos: ['M3 8h11v8H3z M14 10.5l6-3.5v10l-6-3.5', 'M8.5 16v5M5 21h7', '', []],
+  camorb: ['M12 4a8 8 0 1 0 0.01 0', 'M12 12h0.01M4 12h3M17 12h3M12 4v3', '', []],
+  camvp: ['M2 16L13 6M2 16l11 4', 'M13 6l9-2M13 20l9-2M13 6v14', '', []],
+  camlook: ['M2 12c2.5-4 6-6 10-6s7.5 2 10 6c-2.5 4-6 6-10 6s-7.5-2-10-6z', 'M12 9.2a2.8 2.8 0 1 0 0.01 0', '', []],
   prev: ['', 'M8 5L3 10l5 5M3 10h11a6 6 0 0 1 0 9', '', []],
   rrect: ['', 'M5 15l5-9 10 5-5 9z', 'M5 15l5-9 10 5-5 9z', [[5, 15], [10, 6]]],
   freehand: ['', 'M3 16c3-8 5 4 8-2s5-6 10-2', '', []],
@@ -89,6 +95,10 @@ const TOOLINFO = {
   text: ['Text', 'X', 'Clic al punt i escriu el text.'],
   section: ['Pla de secció', 'N', 'Clic en una cara: crea un pla de secció que talla el model (activa/inverteix a la safata).'],
   zoomwin: ['Zoom finestra', 'Y', 'Arrossega una finestra per acostar-hi la vista.'],
+  campos: ['Posiciona càmera', '', 'Clic a la posició (ulls a l’alçada indicada) i clic al punt de mira. Escriu 35mm, 60° o h1.6.'],
+  camorb: ['Òrbita de càmera', '', 'Arrossega ↔ ↕: la càmera es mou sobre una esfera al voltant del punt de mira (o el punt de mira al voltant de la càmera) · Tab canvia.'],
+  camvp: ['Marca fugues', '', 'Clic sobre arestes: les paral·leles formen una fuga (fins a tres); les línies s’allarguen fins al punt de fuga.'],
+  camlook: ['Mira al voltant', '', 'Arrossega per girar des de l’ull · ↑↓ camina, ←→ gira, RePàg/AvPàg alçada.'],
   rrect: ['Rectangle girat', 'V', 'Dos clics per a un costat i un tercer per a l’amplada.'],
   freehand: ['A mà alçada', 'K', 'Arrossega per dibuixar una polilínia lliure.'],
   refplane: ['Pla de referència', 'RP', 'Clic al punt inicial i al final: pla vertical d’ajuda que també atrau la inferència.'],
@@ -98,6 +108,8 @@ const TOOLINFO = {
   strip: ['Sabata correguda', '', 'Clic sobre un mur: sabata sota tot el mur · dos clics: tram lliure · «amplada;cantell» al VCB.'],
   roof: ['Coberta', 'Maj+C', 'Clic sobre un mur d’un recinte, un forjat o un grup · o dos clics (rectangle) · Maj+clic: contorn. Neix plana; el pendent de cada aresta es defineix al panell.'],
   roofpt: ['Punt de cota de coberta', '', 'Clic dins de la coberta seleccionada.'],
+  door: ['Porta', '', 'Tria una porta al catàleg «Portes» i fes clic sobre un mur: hi obre el forat.'],
+  win: ['Finestra', '', 'Tria una finestra al catàleg «Finestres» i fes clic sobre un mur: hi obre el forat.'],
   comp: ['Component', '', 'Portes i finestres: clic sobre un mur · components lliures: clic al punt d’inserció. Tria’l al panell «Components».'],
   compax: ['Eixos del component', '', 'Dos clics sobre una instància: origen i direcció X (l’amplada de la porta o finestra).'],
   bsec: ['Secció BIM', '', 'Dos clics en planta: el traç és el pla de tall i la mirada va cap a l’esquerra del traç. Commutador i profunditat a la vista.'],
@@ -140,8 +152,8 @@ function menuDefs() {
   const tools = ns => ns.map(n => ({ l: TOOLINFO[n][0], sc: keyOfTool(n), f: () => setTool(n), ck: () => S.tool === n }));
   return [
     ['Fitxer', [
-      { l: 'Nou', f: () => newDoc() }, { l: 'Obre…', sc: 'Ctrl+O', f: openFile }, { sep: 1 }, { l: 'Desa', sc: 'Ctrl+S', f: saveFile }, { l: 'Desa com a…', f: () => saveFile() }, { sep: 1 },
-      { l: 'Importa', sub: [{ l: 'DXF (ASCII)…', f: () => openImportFile('dxf') }, { l: 'Imatge de calc (PNG · JPG · SVG)…', f: () => openImportFile('img') }] }, { l: 'Document 2D (planta, alçat, secció)…', f: () => docDlg() }, { l: 'Exporta', sub: [{ l: 'IFC (2x3 · 4 · 4x1 · 4x2 · 4x3)…', f: () => exportDlg('ifc') }, { l: 'DXF (R12 · 2000 · 2013)…', f: () => exportDlg('dxf') }, { sep: 1 }, { l: 'OBJ + MTL…', f: () => exportDlg('obj') }, { l: 'glTF binari (GLB)…', f: () => exportDlg('glb') }, { l: 'STL…', f: () => exportDlg('stl') }, { sep: 1 }, { l: 'SVG de la vista…', f: () => exportDlg('svg') }, { l: 'PNG de la vista…', f: () => exportDlg('png') }, { sep: 1 }, { l: 'JSON guaitaBIMup', f: () => saveFile(true) }, { l: 'SKP (experimental)…', f: () => exportDlg('skp') }] }, { sep: 1 },
+      { l: 'Nou', f: () => newDoc() }, { l: 'Nova finestra', sc: 'Ctrl+Alt+N', f: newWindow }, { l: 'Obre…', sc: 'Ctrl+O', f: openFile }, { l: 'Obre SketchUp (.skp) com a projecte…', f: () => skpPick(false) }, { l: 'Treballs sense desar…', f: () => sessDlg() }, { sep: 1 }, { l: 'Desa', sc: 'Ctrl+S', f: saveFile }, { l: 'Desa com a…', f: () => saveFile() }, { sep: 1 },
+      { l: 'Importa', sub: [{ l: 'SketchUp (.skp) al projecte…', f: () => skpPick(true) }, { l: 'DXF (ASCII)…', f: () => openImportFile('dxf') }, { l: 'Imatge de calc (PNG · JPG · SVG)…', f: () => openImportFile('img') }] }, { l: 'Document 2D (planta, alçat, secció)…', f: () => docDlg() }, { l: 'Exporta', sub: [{ l: 'IFC (2x3 · 4 · 4x1 · 4x2 · 4x3)…', f: () => exportDlg('ifc') }, { l: 'DXF (R12 · 2000 · 2013)…', f: () => exportDlg('dxf') }, { sep: 1 }, { l: 'OBJ + MTL…', f: () => exportDlg('obj') }, { l: 'glTF binari (GLB)…', f: () => exportDlg('glb') }, { l: 'STL…', f: () => exportDlg('stl') }, { sep: 1 }, { l: 'SVG de la vista…', f: () => exportDlg('svg') }, { l: 'PNG de la vista…', f: () => exportDlg('png') }, { sep: 1 }, { l: 'JSON guaitaBIMup', f: () => saveFile(true) }, { l: 'SKP (experimental)…', f: () => exportDlg('skp') }] }, { sep: 1 },
       { l: 'Configuració…', f: configDlg }, { l: 'Opcions del programa…', f: optsDlg }]],
     ['Edita', [
       { l: 'Desfés', sc: 'Ctrl+Z', f: undo }, { l: 'Refés', sc: 'Ctrl+Y', f: redo }, { sep: 1 }, { l: 'Inverteix la selecció', sc: 'Ctrl+I', f: invertSel }, { l: 'Selecció per propietats…', f: () => toggleSelBar() }, { sep: 1 }, { l: 'Esborra', sc: 'Supr', f: doDelete }, { l: 'Selecciona-ho tot', sc: 'Ctrl+A', f: selectAll }, { l: 'Deselecciona', sc: 'Ctrl+Maj+A', f: () => { clearSel(); refreshSel(); } }, { sep: 1 },
@@ -151,21 +163,21 @@ function menuDefs() {
       { l: 'Vistes', sub: [['Dalt', [0, 0, 1]], ['Davant', [0, -1, 0]], ['Darrere', [0, 1, 0]], ['Dreta', [1, 0, 0]], ['Esquerra', [-1, 0, 0]], ['Baix', [0, 0, -1]], ['Isomètrica', [1, -1, 1]]].map(([l, d]) => ({ l, f: () => goDir(d) })) }, { sep: 1 },
       { l: 'Estils', sub: STYLES_BUILTIN.map(b => ({ l: b.name, f: () => useStyle(b), ck: () => S.style.name === b.name })) }, { l: 'Estil', sub: [{ l: 'Arestes', f: () => { S.style.edges = !S.style.edges; refreshAll(); }, ck: () => S.style.edges }, { l: 'Filferro', f: () => { S.style.wire = !S.style.wire; refreshAll(); }, ck: () => S.style.wire }, { l: 'Raigs X', f: () => { S.style.xray = !S.style.xray; refreshAll(); }, ck: () => S.style.xray }, { sep: 1 },
         { l: 'Color per material', f: () => { S.style.colorBy = 'mat'; refreshAll(); }, ck: () => S.style.colorBy === 'mat' }, { l: 'Color per classe IFC', f: () => { S.style.colorBy = 'ifc'; refreshAll(); }, ck: () => S.style.colorBy === 'ifc' }] },
-      { l: 'Mostra', sub: [['ground', 'Terra'], ['axes', 'Eixos'], ['levels', 'Nivells'], ['grids', 'Eixos de pilars'], ['cube', 'Cub d’orientació']].map(([k, l]) => ({ l, f: () => { S.show[k] = !S.show[k]; if (k === 'cube') $('cubeBox').style.display = S.show[k] ? '' : 'none'; refreshAll(); }, ck: () => S.show[k] })) },
+      { l: 'Mostra', sub: [['ground', 'Terra'], ['axes', 'Eixos'], ['levels', 'Nivells'], ['grids', 'Eixos de pilars'], ['cube', 'Caseta de vistes'], ['cam', 'Càmera cònica']].map(([k, l]) => ({ l, f: () => { S.show[k] = !S.show[k]; if (k === 'cube') $('cubeBox').style.display = S.show[k] ? '' : 'none'; refreshAll(); }, ck: () => S.show[k] })) },
       { l: 'Representació dels nivells', sub: [['full', 'Complet'], ['compact', 'Compacte']].map(([k, l]) => ({ l, f: () => setVisMode('lvl', k), ck: () => visMode('lvl') === k })) },
       { l: 'Representació dels eixos', sub: [['full', 'Complet'], ['compact', 'Compacte'], ['plan', '1 línia en planta']].map(([k, l]) => ({ l, f: () => setVisMode('grd', k), ck: () => visMode('grd') === k })) },
       { l: 'Fons', sub: [['sky', 'Cel'], ['white', 'Blanc'], ['grey', 'Gris fosc'], ['black', 'Negre']].map(([k, l]) => ({ l, f: () => setBg(k), ck: () => S.bg === k })) }, { sep: 1 },
-      { l: 'Càmera', sub: [...tools(['orbit', 'pan', 'zoom', 'zoomwin']), { l: 'Vista anterior', f: prevView }] }, { l: 'Caixa de secció…', f: sectionBoxPanel }, { l: 'Desa escena', f: saveScene }, { sep: 1 },
+      { l: 'Càmera', sub: [...tools(['orbit', 'pan', 'zoom', 'zoomwin']), { l: 'Vista anterior', f: prevView }, { sep: 1 }, ...tools(['campos', 'camlook', 'camorb', 'camvp']), { l: 'Mira per la càmera', f: camGo }, { l: 'Càmera cònica…', f: camWin }] }, { l: 'Caixa de secció…', f: sectionBoxPanel }, { l: 'Desa escena', f: saveScene }, { sep: 1 },
       { l: 'Ajusta a la selecció', sc: 'Ctrl+Maj+Z', f: () => fitView(true) }, { l: 'Ajusta el model', sc: 'Maj+Z', f: () => fitView() }]],
     ['Dibuixa', tools(['line', 'freehand', 'rect', 'rrect', 'circle', 'poly', 'arc'])],
-    ['Modifica', [...tools(['select', 'eraser', 'paint']), { sep: 1 }, ...tools(['pushpull', 'move', 'copy', 'rotate', 'scale', 'followme', 'offset']), { sep: 1 }, ...tools(['trim', 'split', 'join', 'mirror', 'align', 'lineoff']), { sep: 1 }, { l: 'Sòlids (booleanes)', sub: BOOL_ITEMS() }]],
+    ['Modifica', [...tools(['select', 'eraser', 'paint']), { sep: 1 }, ...tools(['pushpull', 'move', 'copy', 'rotate', 'scale', 'followme', 'offset']), { sep: 1 }, ...tools(['trim', 'split', 'join', 'mirror', 'align', 'lineoff']), { sep: 1 }, { l: 'Arestes', sub: [{ l: 'Suavitza la selecció', f: () => edgeSoftSet(1) }, { l: 'Endureix la selecció', f: () => edgeSoftSet(2) }, { l: 'Segons l’angle de l’estil', f: () => edgeSoftSet(0) }] }, { l: 'Sòlids (booleanes)', sub: BOOL_ITEMS() }]],
     ['Mesura', tools(['tape', 'dim', 'protr', 'text', 'section'])],
-    ['BIM', [...tools(['level', 'grid', 'refplane']), { sep: 1 }, ...tools(['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'comp', 'bsec']), { sep: 1 }, ...tools(['matf', 'pad', 'strip']), { sep: 1 }, ...tools(['ifc']), { l: 'Classificació assistida…', f: () => classDlg() }, { l: 'Selecciona grups sense classificar', f: () => selectPending() }, { sep: 1 }, { l: 'Mou la selecció al nivell actiu', f: () => toLevel('move') }, { l: 'Copia la selecció al nivell actiu', f: () => toLevel('copy') }, { l: 'Assigna la selecció al nivell actiu', f: () => toLevel('assign') }, { sep: 1 }, { l: 'Nivell de treball', sub: S.model.levels.slice().reverse().map(l => ({ l: l.name + '  ' + fmtElev(l.elev), f: () => setLevel(l.id), ck: () => S.level === l.id })) }]],
+    ['BIM', [...tools(['level', 'grid', 'refplane']), { sep: 1 }, ...tools(['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'door', 'win', 'comp', 'bsec']), { sep: 1 }, ...tools(['matf', 'pad', 'strip']), { sep: 1 }, ...tools(['ifc']), { l: 'Classificació assistida…', f: () => classDlg() }, { l: 'Taller (dades BIM, vistes, plànols)…', f: () => { GV.sp = 'dades'; pubOpen(); } }, { l: 'Selecciona grups sense classificar', f: () => selectPending() }, { sep: 1 }, { l: 'Mou la selecció al nivell actiu', f: () => toLevel('move') }, { l: 'Copia la selecció al nivell actiu', f: () => toLevel('copy') }, { l: 'Assigna la selecció al nivell actiu', f: () => toLevel('assign') }, { sep: 1 }, { l: 'Nivell de treball', sub: S.model.levels.slice().reverse().map(l => ({ l: l.name + '  ' + fmtElev(l.elev), f: () => setLevel(l.id), ck: () => S.level === l.id })) }]],
     ['Finestra', [
       { l: 'Barres d’eines', sub: BAR_DEFS.map(d => ({ l: d[1], f: () => toggleBar(d[0]), ck: () => !LAY.bars[d[0]].hidden })) },
       { l: 'Panells', sub: Object.entries(panelDefs()).map(([k, d]) => ({ l: d[0], f: () => togglePanel(k), ck: () => !(LAY.panels[k] && LAY.panels[k].hidden) })) },
       { l: 'Panells flotants', sub: Object.entries(panelDefs()).map(([k, d]) => ({ l: d[0], f: () => setPanelFloat(k, !(LAY.panels[k] && LAY.panels[k].float)), ck: () => !!(LAY.panels[k] && LAY.panels[k].float) })) },
-      { l: 'Segon panell lateral', f: toggleTray2, ck: () => LAY.two },
+      { l: 'Segon panell lateral', f: toggleTray2, ck: () => LAY.two }, { l: 'Tercer panell lateral', f: toggleTray3, ck: () => !!LAY.three },
       { sep: 1 }, { l: 'Restableix la disposició', f: layReset }]],
     ['Ajuda', [{ l: 'Dreceres de teclat', f: keysDlg }, { l: 'Quant a…', f: aboutDlg }]],
   ];
@@ -203,6 +215,7 @@ function renderInfo() {
     $('gName').onchange = e => { pushUndo(); g.name = e.target.value; renderTray(); };
     $('gIfc').onchange = e => { pushUndo(); g.ifc = e.target.value || null; refreshAll(); };
     $('gLvl').onchange = e => { pushUndo(); g.level = e.target.value ? +e.target.value : null; if (g.par && g.level != null) { g.par.lv = g.level; refreshAll(); } else renderInfo(); };
+    b.insertAdjacentHTML('beforeend', lnElemHTML(g)); lnElemBind(b, g);
     if (g.par) parPanel(b, g); else { const cv = el('button', 'btn sm', 'Converteix en coberta paramètrica'); cv.id = 'toRoof'; cv.title = 'Pren el perímetre de la cara inferior, el gruix i la cota del grup'; cv.onclick = () => roofAdopt(ctxInfo().c, g); b.appendChild(cv); }
     return;
   }
@@ -211,22 +224,31 @@ function renderInfo() {
   b.innerHTML = kv([['Cares', S.sel.faces.size], ['Arestes', S.sel.edges.size], ['Grups', S.sel.groups.size], ['Àrea', a ? fmt(a) + ' m²' : '—'], ['Longitud', len ? fmtM(len) : '—']]);
 }
 function viewsPanel(b) {
-  const row = (key, label, sub) => { const r = el('div', 'row it' + (S.view === key ? ' on' : ''), '<span class="gw">' + esc(label) + '</span>' + (sub ? '<span class="mono dim">' + esc(sub) + '</span>' : '')); r.onclick = () => openView(key); return r; };
+  const row = (key, label, sub) => { const r = el('div', 'row it' + (S.view === key ? ' on' : ''), '<span class="gw">' + esc(label) + '</span>' + (sub ? '<span class="mono dim">' + esc(sub) + '</span>' : '')); r.onclick = () => openView(key);
+    const pb = el('button', 'btn sm', '⧉'); pb.dataset.pubnew = key; pb.title = 'Crea una vista publicable a partir d’aquesta vista'; pb.onclick = e => { e.stopPropagation(); const p = pubCreate(key); if (p) { toast('Vista publicable «' + p.name + '» creada.'); pubOpen(p.id); } }; r.appendChild(pb); return r; };
   const hd = t => b.appendChild(el('div', 'row hd', esc(t)));
-  hd('Escenes'); S.model.views.forEach(v => b.appendChild(row('scene:' + v.id, v.name)));
+  hd('Escenes 3D'); S.model.views.forEach(v => b.appendChild(row('scene:' + v.id, v.name)));
   hd('Plantes'); if (!S.model.levels.length) b.appendChild(el('div', 'empty', 'Crea un nivell (LL).')); S.model.levels.slice().reverse().forEach(l => b.appendChild(row('plan:' + l.id, l.name, fmtElev(l.elev))));
   hd('Alçats'); ELEVS.forEach(e => b.appendChild(row('elev:' + e[0], e[1])));
   hd('Seccions'); if (!S.model.grids.length) b.appendChild(el('div', 'empty', 'Crea un eix de pilars (GR).')); S.model.grids.forEach(g => b.appendChild(row('sec:' + g.id, 'Eix ' + g.name)));
-  const a = el('div', 'row', ''); const nb = el('button', 'btn sm', 'Desa escena'); nb.onclick = saveScene; a.appendChild(nb); const db = el('button', 'btn sm', 'Document 2D…'); db.id = 'docBtn'; db.onclick = () => docDlg(); a.appendChild(db); b.appendChild(a);
+  const a = el('div', 'row', ''); a.style.gap = '6px'; const nb = el('button', 'btn sm', 'Desa escena'); nb.onclick = saveScene; a.appendChild(nb); const pl = el('button', 'btn sm acc', 'Plànols…'); pl.id = 'pubBtn'; pl.onclick = () => pubOpen(); a.appendChild(pl); const db = el('button', 'btn sm', 'Document 2D…'); db.id = 'docBtn'; db.onclick = () => docDlg(); a.appendChild(db); b.appendChild(a);
+  b.appendChild(el('div', 'empty', '⧉ crea una vista publicable amb la seva representació, filtre i límits; es gestiona a «Plànols».'));
 }
 function ifcPanel(b) {
   const vis = el('div', 'row', ''); const ch = (lab, key, isIfc) => { const l = el('label', 'gw', '<input type="checkbox"' + (!S.hiddenIfc.has(key) ? ' checked' : '') + '> ' + lab); l.querySelector('input').onchange = e => { if (e.target.checked) S.hiddenIfc.delete(key); else S.hiddenIfc.add(key); refreshAll(); }; return l; };
-  vis.appendChild(ch('Mostra esbós', '-')); b.appendChild(vis);
+  vis.appendChild(ch('Mostra esbós', '-')); const tb = el('button', 'btn sm acc', 'Taller…'); tb.id = 'clsTaller'; tb.title = 'Obre el Taller (dades BIM, vistes i plànols)'; tb.onclick = () => { if (typeof GV !== 'undefined') GV.sp = 'dades'; pubOpen(); }; vis.appendChild(tb); b.appendChild(vis);
+  const fr = el('div', 'row ifc-f'); const q = el('input'); q.type = 'search'; q.id = 'ifcQ'; q.placeholder = 'Cerca una categoria…'; q.setAttribute('aria-label', 'Cerca una categoria IFC'); q.value = S.ifcQ || ''; fr.appendChild(q);
+  const all = el('button', 'btn sm', 'Tot'), none = el('button', 'btn sm', 'Res'); all.id = 'ifcAll'; none.id = 'ifcNone'; all.title = 'Mostra totes les categories IFC (no toca l’esbós)'; none.title = 'Amaga totes les categories IFC (no toca l’esbós)';
+  const vis2 = () => IFC.filter(r => !S.ifcQ || (r[1] + ' ' + r[0]).toLowerCase().includes(S.ifcQ.toLowerCase()));
+  all.onclick = () => { vis2().forEach(r => S.hiddenIfc.delete(r[0])); refreshAll(); renderTray(); }; none.onclick = () => { vis2().forEach(r => S.hiddenIfc.add(r[0])); refreshAll(); renderTray(); };
+  fr.appendChild(all); fr.appendChild(none); b.appendChild(fr);
+  q.oninput = () => { S.ifcQ = q.value; const t = q.value.toLowerCase(); for (const r of b.querySelectorAll('[data-ifc]')) r.style.display = !t || r.dataset.ifcq.includes(t) ? '' : 'none'; };
   const cb = el('div', 'row', '<span class="gw">Color per classe</span>'); const ck = el('input'); ck.type = 'checkbox'; ck.checked = S.style.colorBy === 'ifc'; ck.onchange = () => { S.style.colorBy = ck.checked ? 'ifc' : 'mat'; refreshAll(); buildMenus(); }; cb.appendChild(ck); b.appendChild(cb);
   const cnt = {}; (function w(c, top) { for (const g of c.groups.values()) { if (g.ifc) cnt[g.ifc] = (cnt[g.ifc] || 0) + 1; w(g); } })(S.model.root);
   { const nb = el('div', 'row it' + (!S.ifcActive ? ' on' : ''), '<span class="sw" style="background:transparent;border:1px dashed #888"></span><span class="gw">— No BIM (esbós) —</span>'); nb.onclick = () => { setActiveClass(null); if (S.sel.groups.size) { pushUndo(); const { c: cc } = ctxInfo(); S.sel.groups.forEach(id => { const g = cc.groups.get(id); if (g) g.ifc = null; }); refreshAll(); } }; b.appendChild(nb); }
   IFC.forEach(r => {
     const row = el('div', 'row it' + (S.ifcActive === r[0] ? ' on' : ''), '<input type="checkbox"' + (!S.hiddenIfc.has(r[0]) ? ' checked' : '') + ' title="Visible"><span class="sw" style="background:' + r[2] + '"></span><span class="gw" title="' + r[0] + '">' + esc(r[1]) + '</span><span class="mono dim">' + (cnt[r[0]] || '') + '</span>');
+    row.dataset.ifc = r[0]; row.dataset.ifcq = (r[1] + ' ' + r[0]).toLowerCase(); if (S.ifcQ && !row.dataset.ifcq.includes(S.ifcQ.toLowerCase())) row.style.display = 'none';
     const c = row.querySelector('input'); c.onclick = e => e.stopPropagation(); c.onchange = e => { if (e.target.checked) S.hiddenIfc.delete(r[0]); else S.hiddenIfc.add(r[0]); refreshAll(); };
     row.onclick = () => { setActiveClass(r[0], true); if (selCount() && S.sel.groups.size) { pushUndo(); const { c: cc } = ctxInfo(); S.sel.groups.forEach(id => { const g = cc.groups.get(id); if (g) g.ifc = r[0]; }); refreshAll(); } else renderTray(); };
     b.appendChild(row);
@@ -246,7 +268,19 @@ function outlPanel(b) {
   const w = (c, d) => { for (const g of c.groups.values()) { const r = el('div', 'row it' + (S.sel.groups.has(g.id) ? ' on' : ''), '<span class="gw" style="padding-left:' + d * 12 + 'px">' + esc(g.name || 'Grup ' + g.id) + '</span><span class="mono dim">' + (g.ifc ? g.ifc.replace('Ifc', '') : 'esbós') + '</span>'); r.onclick = () => { if (d === 0 && !S.ctx.length) { clearSel(); S.sel.groups.add(g.id); refreshSel(); } }; b.appendChild(r); w(g, d + 1); } };
   const { c } = ctxInfo(); if (!c.groups.size) b.appendChild(el('div', 'empty', 'Sense grups.')); w(c, 0);
 }
-function scenesPanel(b) { S.model.views.forEach(v => { const r = el('div', 'row', '<span class="gw">' + esc(v.name) + '</span>'); const o = el('button', 'btn sm', 'Obre'); o.onclick = () => openView('scene:' + v.id); const x = el('button', 'x', '✕'); x.onclick = () => { pushUndo(); S.model.views = S.model.views.filter(y => y !== v); closeTab('scene:' + v.id); refreshAll(); }; r.appendChild(o); r.appendChild(x); b.appendChild(r); }); }
+function scenesPanel(b) {
+  const top = el('div', 'row'); const nb = el('button', 'btn sm acc', 'Desa escena'); nb.id = 'scNew'; nb.title = 'Desa la vista actual: càmera, estil, tall, etiquetes i classes IFC visibles'; nb.onclick = saveScene; top.appendChild(nb); b.appendChild(top);
+  if (!S.model.views.length) b.appendChild(el('div', 'empty', 'Cap escena. Una escena recorda la càmera, l’estil, la vista de tall (planta, secció o alçat) i què és visible; no és una vista de publicació.'));
+  S.model.views.forEach((v, i) => {
+    const r = el('div', 'row'); r.style.cssText = 'flex-wrap:wrap;gap:4px'; r.dataset.scene = v.id;
+    const nm = el('input'); nm.type = 'text'; nm.value = v.name; nm.style.cssText = 'flex:1;min-width:80px'; nm.onchange = () => { pushUndo(); v.name = nm.value.trim() || v.name; renderTray(); syncUI(); }; r.appendChild(nm);
+    const o = el('button', 'btn sm', 'Obre'); o.dataset.scopen = v.id; o.onclick = () => openView('scene:' + v.id); r.appendChild(o);
+    const u = el('button', 'btn sm', 'Actualitza'); u.dataset.scupd = v.id; u.title = 'Substitueix l’escena per la vista actual'; u.onclick = () => updateScene(v); r.appendChild(u);
+    for (const [d, ch, tt] of [[-1, '↑', 'Puja'], [1, '↓', 'Baixa']]) { const m = el('button', 'btn sm', ch); m.title = tt; m.disabled = i + d < 0 || i + d >= S.model.views.length; m.onclick = () => { pushUndo(); const a = S.model.views, t = a[i]; a[i] = a[i + d]; a[i + d] = t; renderTray(); }; r.appendChild(m); }
+    const x = el('button', 'x', '✕'); x.title = 'Esborra l’escena'; x.onclick = () => { pushUndo(); S.model.views = S.model.views.filter(y => y !== v); closeTab('scene:' + v.id); refreshAll(); }; r.appendChild(x); b.appendChild(r);
+  });
+}
+function scenesPanelOld(b) { S.model.views.forEach(v => { const r = el('div', 'row', '<span class="gw">' + esc(v.name) + '</span>'); const o = el('button', 'btn sm', 'Obre'); o.onclick = () => openView('scene:' + v.id); const x = el('button', 'x', '✕'); x.onclick = () => { pushUndo(); S.model.views = S.model.views.filter(y => y !== v); closeTab('scene:' + v.id); refreshAll(); }; r.appendChild(o); r.appendChild(x); b.appendChild(r); }); }
 
 /* ---------- estat, pestanyes i sincronització ---------- */
 function updFileInfo() { $('fileName').textContent = S.fileName; $('fileState').textContent = S.dirty ? 'sense desar' : ''; $('fileInfo').classList.toggle('dirty', S.dirty); document.title = (S.dirty ? '• ' : '') + S.fileName + ' — guaitaBIMup ' + VERSION; }
@@ -301,7 +335,7 @@ function saveFile(as) {
 function exportOBJ() { outDlg('Exporta OBJ (Y amunt)', baseName() + '.obj', () => K.toOBJ(S.model, (c, f) => triangulate(c, f)), 'text/plain'); }
 function openFile() { $('fileInput').click(); }
 $('fileInput').onchange = e => {
-  const f = e.target.files[0]; if (!f) return; const rd = new FileReader();
+  const f = e.target.files[0]; if (!f) return; if (/\.skp$/i.test(f.name)) { skpOpen(f, false); e.target.value = ''; return; } const rd = new FileReader();
   rd.onload = () => { try { const m = K.fromJSON(JSON.parse(rd.result)); cancelTool(); S.model = m; S.ctx = []; clearSel(); S.undo = []; S.redo = []; S.level = m.levels.length ? m.levels[0].id : null; S.tabs = []; S.view = null; S.fileName = f.name; S.dirty = false; S.viewClips = []; applyClips(); adoptStyle(); refreshAll(); fitView(); toast('Obert ' + f.name); } catch (err) { toast('No s’ha pogut obrir: ' + err.message); } };
   rd.readAsText(f); e.target.value = '';
 };
@@ -354,7 +388,7 @@ new ResizeObserver(resize).observe(view);
 /* ---------- arrencada ---------- */
 (function boot() {
   S.model = newModel(); S.level = S.model.levels[0].id;
-  try { const a = (localStorage.getItem('guaitabimup.autosave') || localStorage.getItem('guaita3dsketch.autosave')); if (a && !/[?&]nou/.test(location.search)) { const m = K.fromJSON(JSON.parse(a)); if (K.countAll(m.root).e) { S.model = m; S.level = m.levels.length ? m.levels[0].id : null; toast('S’ha recuperat l’últim treball desat automàticament.'); } } } catch (e) { /* sense autodesat */ }
+  try { sessBoot(); } catch (e) { /* sense autodesat */ }
   adoptStyle(); buildBars(); buildMenus(); buildNav(); renderTray(); resize(); rebuild(); syncUI(); setTool('select');
   fitView(); requestAnimationFrame(frame);
 })();

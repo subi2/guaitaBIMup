@@ -1,0 +1,72 @@
+from playwright.sync_api import sync_playwright
+import re,base64
+SETUP=re.search(r'SETUP="""(.*?)"""',open('/home/claude/g3d/test/v420_test.py').read(),re.S).group(1)
+res={"ok":0,"fail":0}
+def chk(c,m):
+    res["ok" if c else "fail"]+=1; print(("OK  " if c else "FAIL")+" "+m)
+B64=base64.b64encode(open('/tmp/t_all.skp','rb').read()).decode()
+URL="file:///home/claude/g3d/out/guaitaBIMup_v0.55.0.html"
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"])
+    ctx=b.new_context(viewport={"width":1600,"height":950}); pg=ctx.new_page(); errs=[]; pg.on("pageerror",lambda e:errs.append(str(e))); ev=pg.evaluate; W=lambda t=250: pg.wait_for_timeout(t)
+    pg.goto(URL+"?nou"); W(1000); ev(SETUP)
+    chk(ev("VERSION")=='0.55.0','versió 0.55.0')
+    # classificador IFC
+    ev("LAY.act[tabColOf('cls')]='cls';TRAY.closed.delete('ifc');renderTray();0"); W()
+    chk(ev("!!$('ifcAll')&&!!$('ifcNone')&&!!$('ifcQ')&&!!$('clsTaller')"),'classificador: Tot, Res, cercador i botó Taller')
+    ev("$('ifcNone').click();0"); W()
+    chk(ev("IFC.every(r=>S.hiddenIfc.has(r[0]))") and not ev("S.hiddenIfc.has('-')"),'Res amaga totes les categories sense tocar l’esbós')
+    ev("$('ifcAll').click();0"); W()
+    chk(ev("IFC.every(r=>!S.hiddenIfc.has(r[0]))"),'Tot les torna a mostrar')
+    ev("$('ifcQ').value='mur';$('ifcQ').dispatchEvent(new Event('input'));0")
+    n=ev("[...document.querySelectorAll('[data-ifc]')].filter(r=>r.style.display!=='none').length")
+    chk(0<n<10,'cercador filtra categories (%d)'%n)
+    ev("$('ifcNone').click();0"); W()
+    chk(ev("S.hiddenIfc.size")==n,'Res només afecta les categories filtrades')
+    ev("S.hiddenIfc.clear();S.ifcQ='';renderTray();0")
+    ev("$('clsTaller').click();0"); W(400)
+    chk(ev("!!document.querySelector('.gc-tab.on[data-sp=dades]')"),'el botó obre el Taller a Dades')
+    ev("document.querySelector('.gc-top .btn, #gcClose')&&0"); ev("pubClose&&pubClose();0") if ev("typeof pubClose==='function'") else None
+    chk('Taller (dades BIM, vistes, plànols)…' in ev("JSON.stringify(menuDefs?menuDefs():0)") if ev("typeof menuDefs==='function'") else ev("document.body.innerHTML.includes('Taller (dades BIM')"),'menú BIM › Taller')
+    # càmera
+    ev("camSet({eye:[0,-10,1.6],tgt:[0,0,4],lens:{...LENS_DEF}});camWin();0"); W(400)
+    ev("$('cpLvl').click();0"); W()
+    chk(abs(ev("camRec().tgt[2]")-1.6)<1e-6,'Nivella: el punt de mira a l’alçada de la càmera')
+    ev("(()=>{const g=document.querySelector('[data-cps=near]');g.value=500;g.dispatchEvent(new Event('input'))})()"); W()
+    nr=ev("camRec().lens.near"); nv=ev("+document.querySelector('input[type=number][data-cp=near]').value")
+    chk(nr>0.5 and abs(nr-nv)<1e-6,'retall proper amb control lliscant i valor numèric (%s)'%nr)
+    ev("(()=>{const i=document.querySelector('input[type=number][data-cp=near]');i.value='2.5';i.dispatchEvent(new Event('change'))})()"); W()
+    chk(ev("camRec().lens.near")==2.5 and abs(ev("+document.querySelector('[data-cps=near]').value")-ev("Math.round(1000*Math.log(2.5/0.05)/Math.log(1000))"))<=1,'el valor numèric mou el control lliscant')
+    f0=ev("camRec().lens.f"); t0=ev("camRec().tgt")
+    ev("(()=>{const g=document.querySelector('[data-cps=dolly]');g.value=700;g.dispatchEvent(new Event('input'))})()"); W()
+    r=ev("camRec()"); d=sum((r['eye'][i]-r['tgt'][i])**2 for i in range(3))**0.5
+    chk(abs(r['lens']['f']-f0)<1e-9 and r['tgt']==t0 and abs(d-ev("camLogD(700)"))<1e-6,'distància de zoom: mou la càmera, manté focal i mira (%.2f m)'%d)
+    # tercer panell
+    ev("LAY.two=true;LAY.three=false;toggleTray3();0"); W()
+    chk(ev("LAY.three") and ev("$('tray3').children.length>0"),'tercer panell lateral')
+    ev("moveTab('cls');0"); W()
+    chk(ev("tabColOf('cls')")==1,'moure pestanya en cicle entre tres columnes')
+    ev("toggleTray3();0")
+    # SKP
+    ev("(async()=>{const b=Uint8Array.from(atob('%s'),c=>c.charCodeAt(0));S.dirty=false;await skpOpen(new File([b],'prova.skp'),false);window.__ok=1})()"%B64); W(2500)
+    ng=ev("S.model.root.groups.size")
+    chk(ng>=1 and ev("S.fileName")=='prova.gbup.json','obre SKP com a projecte nou (%d grups)'%ng)
+    ev("(async()=>{const b=Uint8Array.from(atob('%s'),c=>c.charCodeAt(0));await skpOpen(new File([b],'prova.skp'),true)})()"%B64); W(2500)
+    chk(ev("S.model.root.groups.size")==2*ng,'importa SKP al projecte actual')
+    ev("undo();0"); W()
+    chk(ev("S.model.root.groups.size")==ng,'desfer la importació')
+    # sessions
+    W(1000); sid=ev("SID")
+    chk(ev(f"!!localStorage.getItem('guaitabimup.as.{sid}')") and sid in ev("JSON.parse(localStorage.getItem('guaitabimup.sessions'))"),'autodesat propi d’aquesta sessió')
+    p2=ctx.new_page(); p2.goto(URL); p2.wait_for_timeout(1200); p2.evaluate(SETUP)
+    chk(p2.evaluate("SID")!=sid and p2.evaluate("S.model.root.groups.size")==0,'segona pestanya: sessió nova i independent')
+    p2.evaluate("mk(0,0,0,1,1,1,'X');markDirty();0"); p2.wait_for_timeout(1200)
+    chk(ev("S.model.root.groups.size")==ng,'una pestanya no trepitja l’altra')
+    ev("(()=>{const o=JSON.parse(localStorage.getItem('guaitabimup.sessions'));o['%s'].alive=0;localStorage.setItem('guaitabimup.sessions',JSON.stringify(o))})()"%p2.evaluate("SID"))
+    p2.close()
+    p3=ctx.new_page(); p3.goto(URL); p3.wait_for_timeout(1500)
+    chk(p3.evaluate("!!document.querySelector('[data-sess]')"),'nova pestanya ofereix recuperar treballs sense desar')
+    p3.evaluate("document.querySelector('[data-sess]').click()"); p3.wait_for_timeout(500)
+    chk(p3.evaluate("S.model.root.groups.size")>=1,'recuperar una sessió')
+    pg.screenshot(path='/tmp/v550.png')
+    chk(not errs,'sense errors '+str(errs[:3])); print(res); b.close()

@@ -1,26 +1,26 @@
 /* v0.38.1.a · barres d'eines i panells acoblables / desacoblables (proves) */
 const BAR_DEFS = [
   ['acc', 'Accions', null, 'top'],
-  ['nav', 'Navegació', ['orbit', 'pan', 'zoom', 'zoomwin'], 'top'],
+  ['nav', 'Navegació', ['orbit', 'pan', 'zoom', 'zoomwin', 'campos', 'camlook', 'camorb'], 'top'],
   ['sel', 'Selecció', ['select', 'eraser', 'paint'], 'left'],
   ['dib', 'Dibuix', ['line', 'freehand', 'rect', 'rrect', 'circle', 'poly', 'arc'], 'left'],
   ['mod', 'Modificació', ['pushpull', 'move', 'copy', 'rotate', 'scale', 'followme', 'offset'], 'left'],
   ['lin', 'Modificació de línies', ['trim', 'split', 'join', 'mirror', 'align', 'lineoff'], 'left'],
   ['mes', 'Mesura', ['tape', 'dim', 'protr', 'text', 'section'], 'left2'],
   ['bim1', 'BIM · referències', ['level', 'grid', 'refplane'], 'left2'],
-  ['bim2', 'BIM · elements', ['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'comp', 'bsec'], 'left2'],
+  ['bim2', 'BIM · elements', ['wall', 'column', 'slab', 'roof', 'stair', 'opening', 'door', 'win', 'comp', 'bsec'], 'left2'],
   ['bim3', 'BIM · fonaments', ['matf', 'pad', 'strip'], 'left2'],
   ['bim4', 'BIM · classificació', ['ifc'], 'left2'],
 ];
 const BAR_HOSTS = { top: 'toolbar', left: 'rail', left2: 'rail2', right: 'railR', right2: 'railR2' };
-const TAB_DEFS = [['info', 'Info', ['info']], ['dir', 'Directrius', ['lvl', 'guides']], ['vis', 'Visual', ['views', 'bsec', 'scenes', 'sty', 'mat']], ['cls', 'Classificació', ['outl', 'ifc', 'cmp', 'tags', 'imgs']]];
-const TRAY_CLOSED0 = ['mat', 'tags', 'outl', 'scenes', 'guides', 'sty'];
+const TAB_DEFS = [['info', 'Info', ['info']], ['dir', 'Directrius', ['lvl', 'guides']], ['vis', 'Visual', ['views', 'bsec', 'scenes', 'cam', 'sty', 'lns', 'mat']], ['cls', 'Classificació', ['outl', 'doors', 'wins', 'cmp', 'ifc', 'tags', 'imgs']]];
+const TRAY_CLOSED0 = ['mat', 'tags', 'outl', 'guides', 'sty', 'cam'];
 const TRAY = { closed: new Set(TRAY_CLOSED0) };
 function panelDefs() {
   return {
     info: ['Informació de l’entitat', b => { b.id = 'infoBody'; }], lvl: ['Nivells', levelsPanel], guides: ['Eixos, plans i anotacions', guidesPanel],
-    views: ['Navegador de vistes', viewsPanel], bsec: ['Seccions BIM', bsecPanel], scenes: ['Escenes', scenesPanel], sty: ['Estils de visualització', stylesPanel], mat: ['Materials', matPanel],
-    outl: ['Esquema', outlPanel], ifc: ['Classificador IFC', ifcPanel], cmp: ['Components', compsPanel], tags: ['Etiquetes', tagsPanel], imgs: ['Imatges de calc', imgPanel],
+    views: ['Navegador del model', viewsPanel], bsec: ['Seccions BIM', bsecPanel], scenes: ['Escenes', scenesPanel], cam: ['Càmera cònica', camPanel], sty: ['Estils de visualització', stylesPanel], lns: ['Línies', linesPanel], mat: ['Materials', matPanel],
+    outl: ['Esquema', outlPanel], ifc: ['Classificador IFC', ifcPanel], cmp: ['Components', compsPanel], doors: ['Portes', doorsPanel], wins: ['Finestres', winsPanel], tags: ['Etiquetes', tagsPanel], imgs: ['Imatges de calc', imgPanel],
   };
 }
 /* ---------- disposició (es desa al navegador) ---------- */
@@ -108,19 +108,21 @@ function floatPanel(key, def, P) {
   return f;
 }
 function tabFloats(k) { const t = TAB_DEFS.find(x => x[0] === k); return t ? t[2].filter(key => { const P = LAY.panels[key]; return P && P.float && !P.hidden; }) : []; }
-function redockTab(k) { tabFloats(k).forEach(key => { LAY.panels[key].float = false; }); const t = TAB_DEFS.find(x => x[0] === k); const col = LAY.two ? (LAY.tabCol[k] || 1) : 1; LAY.act[col] = k; laySave(); renderTray(); buildMenus(); resize(); }
-function trayTabs(col) { return TAB_DEFS.filter(t => !LAY.two ? col === 1 : (LAY.tabCol[t[0]] || 1) === col); }
-function toggleTray2() { LAY.two = !LAY.two; laySave(); renderTray(); buildMenus(); resize(); }
-function moveTab(key) { LAY.tabCol[key] = (LAY.tabCol[key] || 1) === 1 ? 2 : 1; laySave(); renderTray(); resize(); }
+function redockTab(k) { tabFloats(k).forEach(key => { LAY.panels[key].float = false; }); const t = TAB_DEFS.find(x => x[0] === k); const col = tabColOf(k); LAY.act[col] = k; laySave(); renderTray(); buildMenus(); resize(); }
+const trayN = () => LAY.three ? 3 : LAY.two ? 2 : 1, tabColOf = k => Math.min(trayN(), LAY.tabCol[k] || 1);
+function trayTabs(col) { return TAB_DEFS.filter(t => tabColOf(t[0]) === col); }
+function toggleTray3() { LAY.three = !LAY.three; if (LAY.three) { LAY.two = true; if (!TAB_DEFS.some(t => LAY.tabCol[t[0]] === 3)) LAY.tabCol.cls = 3; } laySave(); renderTray(); buildMenus(); resize(); }
+function toggleTray2() { LAY.two = !LAY.two; if (!LAY.two) LAY.three = false; laySave(); renderTray(); buildMenus(); resize(); }
+function moveTab(key) { LAY.tabCol[key] = tabColOf(key) % trayN() + 1; laySave(); renderTray(); resize(); }
 function renderTray() {
-  const fl = $('floatLayer'), defs = panelDefs(); const sy = [$('tray').scrollTop, $('tray2').scrollTop];
+  const fl = $('floatLayer'), defs = panelDefs(); const TR = c => $(c === 1 ? 'tray' : 'tray' + c), sy = [1, 2, 3].map(c => TR(c) ? TR(c).scrollTop : 0);
   const fs = new Map(); fl.querySelectorAll('.fpanel').forEach(f => { const b = f.querySelector('.pb'); fs.set(f.dataset.key, b ? b.scrollTop : 0); f.remove(); });
-  [1, 2].forEach(col => {
-    const t = $(col === 1 ? 'tray' : 'tray2'); t.innerHTML = ''; const tabs = trayTabs(col); if (!tabs.length) return;
+  [1, 2, 3].forEach(col => {
+    const t = TR(col); if (!t) return; t.innerHTML = ''; const tabs = trayTabs(col); if (!tabs.length) return;
     let act = tabs.find(x => x[0] === LAY.act[col]) || tabs[0]; LAY.act[col] = act[0];
     const ts = el('div', 'tabs2'); tabs.forEach(([k, l]) => { const b = el('button', 'tab2' + (act[0] === k ? ' on' : ''), esc(l)); b.dataset.tab = k; b.onclick = () => { LAY.act[col] = k; laySave(); renderTray(); };
       const nf = tabFloats(k).length; if (nf) { const r = el('span', 'tabre', '⇲'); r.title = 'Reacobla els ' + nf + ' panells flotants d’aquesta pestanya'; r.onclick = e => { e.stopPropagation(); redockTab(k); }; b.appendChild(r); } ts.appendChild(b); });
-    if (LAY.two) { const mv = el('button', 'tab2 mv', '⇄'); mv.title = 'Mou aquesta pestanya a l’altre panell lateral'; mv.onclick = () => moveTab(act[0]); ts.appendChild(mv); }
+    if (LAY.two) { const mv = el('button', 'tab2 mv', '⇄'); mv.title = 'Mou aquesta pestanya al panell lateral següent'; mv.onclick = () => moveTab(act[0]); ts.appendChild(mv); }
     t.appendChild(ts); let n = 0;
     for (const key of act[2]) { const P = LAY.panels[key] || {}; if (P.hidden || P.float) continue; t.appendChild(panel(key, defs[key][0], defs[key][1])); n++; }
     if (!n) t.appendChild(el('div', 'empty', 'Cap panell acoblat en aquesta pestanya.'));

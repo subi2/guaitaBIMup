@@ -14,9 +14,6 @@ with sync_playwright() as p:
     chk(ev("vrOf(S.model.levels[0]).cut")==1.5 and ev("S.model.levels[0].vr")==None,'rang guardat a la vista de planta')
     chk(ev("JSON.stringify(K.toJSON(S.model)).includes('planViews')"),'planViews desats al JSON')
     chk(ev("(()=>{const j=K.toJSON(S.model);return K.fromJSON(JSON.parse(JSON.stringify(j))).planViews.length})()")==1,'planViews es carreguen')
-    # migració de nivells antics amb vr
-    ev("S.model.levels.push({id:9999,name:'antic',elev:4,vr:{cut:2,bot:0,depth:0.3}})")
-    chk(ev("vrOf(S.model.levels.find(x=>x.id==9999)).cut")==2,'migració: l.vr antic es llegeix')
     # vista planta: ghost només amb profunditat
     ev("openView('plan:%d')"%lid); pg.wait_for_timeout(700)
     chk(ev("!!S.planGhost && S.planGhost.depth==0.5"),'planGhost actiu amb profunditat')

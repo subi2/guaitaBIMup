@@ -105,7 +105,7 @@ function pushSnap(d) {
   const none = { d, lvl: null };
   if (!OPT.snapPx || !st.f || !st.n || Math.abs(st.n[2]) < 0.999) return none;
   const cen = V.add(K.faceCentroid(st.c, st.f), st.off), nz = st.n[2];
-  const mpp = 2 * CAM.dist * Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2)) / ((view && view.clientHeight) || 1);
+  const mpp = 2 * CAM.dist * Math.tan(THREE.MathUtils.degToRad(camVfov() / 2)) / ((view && view.clientHeight) || 1);
   const tol = OPT.snapPx * mpp; let best = null;
   for (const L of S.model.levels) {
     if (L.hidden) continue;

@@ -24,7 +24,7 @@ function createBsec(a, b) {
 function bsecBar() {
   let bar = $('bsecBar'); const v = S.view && String(S.view).startsWith('bsec:') ? bsecOf(String(S.view).slice(5)) : null;
   if (!v) { if (bar) bar.style.display = 'none'; return; }
-  if (!bar) { bar = el('div'); bar.id = 'bsecBar'; bar.style.cssText = 'position:absolute;left:12px;top:12px;display:flex;gap:6px;align-items:center;background:rgba(20,22,26,.82);color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;z-index:5'; $('viewWrap').appendChild(bar); }
+  if (!bar) { bar = el('div'); bar.id = 'bsecBar'; bar.style.cssText = 'position:absolute;left:12px;top:96px;display:flex;gap:6px;align-items:center;background:rgba(20,22,26,.82);color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;z-index:5'; $('viewWrap').appendChild(bar); }
   bar.style.display = 'flex'; bar.innerHTML = '';
   const f = el('button', 'btn sm', 'Mira a l’altra cara'); f.id = 'bsecFlip'; f.title = 'Commuta la cara de mirada de la secció'; f.onclick = () => { pushUndo(); v.flip = !v.flip; openView(S.view); }; bar.appendChild(f);
   const lab = el('span', '', 'Profunditat (m)'); bar.appendChild(lab);

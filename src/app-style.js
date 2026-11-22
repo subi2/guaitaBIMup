@@ -4,12 +4,13 @@
    ============================================================ */
 const STYLE_BASE = {
   name: 'Treball',
-  ed: { show: 'all', w: 1, wp: 1, wc: 3, color: '#1B1D21', by: 'fix', hid: 'off' },
+  ed: { show: 'all', w: 1, wp: 1, wc: 3, color: '#1B1D21', by: 'fix', hid: 'mark', soft: 20, sm: true },
   fa: { mode: 'shaded', by: 'mat', op: 0.45, mono: '#FFFFFF', front: '#FFFFFF', back: '#5B9BD5' },
-  sec: { fill: 'hatch', color: '#2A2E35', bgc: '#FFFFFF', lc: '#000000' },
+  sec: { fill: 'grey', tone: 0.3, color: '#2A2E35', bgc: '#FFFFFF', lc: '#000000' },
   bg: { mode: 'grad', top: '#7FB0E8', bot: '#F2F5F8' },
   sun: { on: false, sh: false, date: '06-21', hour: 12, lat: 41.4, north: 0, li: 1.3, amb: 1.15, dark: 0.45 },
   ann: { ground: true, axes: true, levels: true, grids: true },
+  ln: { set: 'ISO', w: { A: 0.5, B: 0.25, C: 0.18, D: 0.18, S: 0.13 }, vis: { A: true, B: true, C: true, D: true, S: true }, mult: [1, 0.8, 0.6, 0.4], eOn: [true, true, true], d0: 1.2, d: [2.4, 3.6, 4.8], j3: true },
 };
 const PAPER = { bg: { mode: 'solid', top: '#FFFFFF', bot: '#FFFFFF' }, ann: { ground: false, axes: false, levels: true, grids: true } };
 const STYLES_BUILTIN = [
@@ -23,10 +24,12 @@ const STYLES_BUILTIN = [
   { name: 'Revisió de cares', fa: { by: 'side' }, bg: { mode: 'solid', top: '#F2F4F1', bot: '#F2F4F1' }, ann: { ground: false } },
 ];
 const LVL_PAL = ['#4E79A7', '#F28E2B', '#59A14F', '#E15759', '#76B7B2', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
-function stylePlain(s) { const o = { name: s.name }; for (const k of ['ed', 'fa', 'sec', 'bg', 'sun', 'ann']) o[k] = { ...s[k] }; return o; }
+function lnMerge(src) { const b = JSON.parse(JSON.stringify(STYLE_BASE.ln)); if (src) for (const k of Object.keys(src)) { if (k === 'w' || k === 'vis') Object.assign(b[k], src[k]); else if (Array.isArray(src[k])) b[k] = src[k].slice(); else b[k] = src[k]; } return b; }
+function stylePlain(s) { const o = { name: s.name }; for (const k of ['ed', 'fa', 'sec', 'bg', 'sun', 'ann']) o[k] = { ...s[k] }; o.ln = lnMerge(s.ln); return o; }
 function mkStyle(src) {
   const s = { name: (src && src.name) || STYLE_BASE.name };
   for (const k of ['ed', 'fa', 'sec', 'bg', 'sun', 'ann']) s[k] = { ...STYLE_BASE[k], ...((src && src[k]) || {}) };
+  s.ln = lnMerge(src && src.ln);
   /* compatibilitat amb les versions anteriors (no enumerables: no es desen) */
   Object.defineProperties(s, {
     wire: { get() { return s.fa.mode === 'wire'; }, set(v) { s.fa.mode = v ? 'wire' : 'shaded'; } },
@@ -118,10 +121,9 @@ function applyStyleEnv() {
   const x = s.fa.mode === 'xray'; matFace.transparent = x; matFace.opacity = x ? s.fa.op : 1; matFace.depthWrite = !x; matFace.needsUpdate = true;
   matBack.color.set(s.fa.back);
   const w = view.clientWidth || 1, h = view.clientHeight || 1; for (const m of LINE_MATS) m.resolution.set(w, h);
-  matLine.linewidth = s.ed.w; matLineP.linewidth = Math.max(s.ed.w, s.ed.wp); matLineSil.linewidth = Math.max(s.ed.w, s.ed.wp); matLineSil.color.set(s.ed.color);
-  matLineCut.linewidth = s.ed.wc; matLineCut.color.set(s.sec.lc);
-  matLineHid.dashed = s.ed.hid === 'dash'; matLineHid.needsUpdate = true;
-  matCap.uniforms.c1.value.set(s.sec.color); matCap.uniforms.c2.value.set(s.sec.bgc); matCap.uniforms.mode.value = s.sec.fill === 'solid' ? 0 : s.sec.fill === 'cross' ? 2 : 1; matCap.uniforms.px.value = renderer ? renderer.getPixelRatio() : 1;
+  lnPoolReset(); matLineSil.linewidth = lnPx(s.ln.w.B) * lnProf(); matLineSil.color.set(s.ed.color);
+  matLineCut.linewidth = lnPx(s.ln.w.A); matLineCut.color.set(s.sec.lc); matLineCutB.linewidth = lnPx(s.ln.w.B); matLineCutB.color.set(s.ed.color);
+  matCap.uniforms.c1.value.set(s.sec.fill === 'grey' ? lnMix(s.sec.color, s.sec.bgc, s.sec.tone) : s.sec.color); matCap.uniforms.c2.value.set(s.sec.bgc); matCap.uniforms.mode.value = s.sec.fill === 'solid' || s.sec.fill === 'grey' ? 0 : s.sec.fill === 'cross' ? 2 : 1; matCap.uniforms.px.value = renderer ? renderer.getPixelRatio() : 1;
   /* llum */
   hemi.intensity = s.sun.on ? s.sun.amb : 1.15; SUN_INFO = null;
   if (s.sun.on) {
@@ -131,57 +133,49 @@ function applyStyleEnv() {
     sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
     shadowCatcher.material.opacity = s.sun.dark; shadowCatcher.visible = sun.castShadow && S.show.ground;
   } else { sun.intensity = 1.3; sun.position.set(30, -40, 70); sun.target.position.set(0, 0, 0); sun.castShadow = false; shadowCatcher.visible = false; }
-  CAPS_ON = s.sec.fill !== 'none' && s.fa.mode !== 'wire' && s.fa.mode !== 'xray' && clipList().length > 0;
-  SIL = []; SILKEY = ''; disposeGroup(gSil); disposeGroup(gCaps); styleLegend();
+  CAPS_ON = s.ln.vis.A && s.sec.fill !== 'none' && s.fa.mode !== 'wire' && s.fa.mode !== 'xray' && clipList().length > 0;
+  SIL = []; SILKEY = ''; SOFTC = new WeakMap(); SMOC = new WeakMap(); disposeGroup(gSil); disposeGroup(gCaps); styleLegend();
 }
 function lineObj(pos, col, mat) {
   const g = new THREE.LineSegmentsGeometry(); g.setPositions(pos); if (col) g.setColors(col);
   const l = new THREE.LineSegments2(g, mat); if (mat.dashed) l.computeLineDistances(); return l;
 }
 /* arestes d'un contenidor: normals, de contorn (gruix de perfil), ocultes i candidates a silueta */
-function styleEdges(c, off, edges, faces, st) {
+function styleEdges(c, off, edges, faces, st, path) {
   const s = S.style, mode = s.fa.mode, show = s.ed.show === 'none' && mode === 'wire' ? 'all' : s.ed.show; if (show === 'none') return null;
-  const adj = new Map(), key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+  const ln = s.ln, adj = new Map(), key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
   for (const f of faces) for (const lp of [f.loop, ...f.holes]) for (let i = 0; i < lp.length; i++) { const k = key(lp[i], lp[(i + 1) % lp.length]); let l = adj.get(k); if (!l) adj.set(k, l = []); l.push(f.n); }
-  const prof = mode !== 'wire' && s.ed.wp > s.ed.w, dyn = mode !== 'wire' && (prof || show === 'crease');
-  _c.set(st.ecol || s.ed.color); const cr = _c.r, cg = _c.g, cb = _c.b, pn = [], cn = [], pp = [], cp = [];
+  const soft = mode === 'wire' ? new Set() : softEdges(c), prof = mode !== 'wire' && lnProf() > 1, dyn = mode !== 'wire' && (prof || show === 'crease' || soft.size > 0);
+  const hidOn = s.ed.hid !== 'off' && (s.ed.hid !== 'mark' || st.thru) && ln.vis.C && mode !== 'wire' && mode !== 'xray', segs = [];
   for (const e of edges) {
     const a = K.P(c, e.a), b = K.P(c, e.b), A = [a[0] + off[0], a[1] + off[1], a[2] + off[2]], B = [b[0] + off[0], b[1] + off[1], b[2] + off[2]], n = adj.get(key(e.a, e.b)) || [];
     if (n.length === 2 && dyn) SIL.push(A, B, n[0], n[1]);
+    if (soft.has(e.id)) continue;
     if (show === 'crease' && n.length === 2 && V.dot(n[0], n[1]) > 0.9) continue;
-    if (n.length === 1 && prof) { pp.push(A[0], A[1], A[2], B[0], B[1], B[2]); cp.push(cr, cg, cb, cr, cg, cb); } else { pn.push(A[0], A[1], A[2], B[0], B[1], B[2]); cn.push(cr, cg, cb, cr, cg, cb); }
+    segs.push({ a: A, b: B, isP: n.length === 1 && prof, c, ed: e, off, path });
   }
-  if (pn.length) gModel.add(lineObj(pn, cn, matLine)); if (pp.length) gModel.add(lineObj(pp, cp, matLineP));
-  if (s.ed.hid !== 'off' && mode !== 'wire' && mode !== 'xray' && (pn.length || pp.length)) { const l = lineObj(pn.concat(pp), null, matLineHid); l.renderOrder = 1; gModel.add(l); }
+  _c.set(st.ecol || s.ed.color); LN_CONT.push({ segs, base: [_c.r, _c.g, _c.b], hidOn, path });
   return adj;
 }
 /* tapes de secció: comptatge amb stencil dels sòlids tancats */
-function styleCaps(geo, faces, adj) {
-  if (!CAPS_ON || faces.length < 4 || !adj) return; for (const l of adj.values()) if (l.length !== 2) return;
+function styleCaps(geo, faces, adj, path) {
+  if (!CAPS_ON || (path && !lnFlags(path).cut) || faces.length < 4 || !adj) return; for (const l of adj.values()) if (l.length !== 2) return;
   const p = geo.attributes.position.array; let vol = 0;
+  /* només els sòlids que travessen un pla de tall real (no el pla inferior d’una planta) generen farcit: un forjat sota el nivell compta zero i no s’ha de ratllar */
+  { const cps = clipList().filter(q => !q.floor); let cross = !cps.length; for (const q of cps) { let lo = Infinity, hi = -Infinity; for (let i = 0; i < p.length; i += 3) { const d = q.normal.x * p[i] + q.normal.y * p[i + 1] + q.normal.z * p[i + 2] + q.constant; if (d < lo) lo = d; if (d > hi) hi = d; } if (lo < 0 && hi > 0) { cross = true; break; } } if (!cross) return; }
   for (let i = 0; i < p.length; i += 9) vol += p[i] * (p[i + 4] * p[i + 8] - p[i + 5] * p[i + 7]) - p[i + 1] * (p[i + 3] * p[i + 8] - p[i + 5] * p[i + 6]) + p[i + 2] * (p[i + 3] * p[i + 7] - p[i + 4] * p[i + 6]);
   const mb = new THREE.Mesh(geo, vol < 0 ? matStF : matStB), mf = new THREE.Mesh(geo, vol < 0 ? matStB : matStF); mb.renderOrder = mf.renderOrder = 2; mb.userData.st = mf.userData.st = 1; gCaps.add(mb, mf);
 }
 function styleCapPlanes() {
   const pls = clipList(); if (!pls.length || S.style.fa.mode === 'wire') return;
-  /* línia de tall gruixuda: intersecció dels triangles amb cada pla */
-  const pos = [], eps = 0.0008;
-  for (const m of pickMeshes) {
-    if (m.userData.back) continue; const p = m.geometry.attributes.position.array;
-    for (const pl of pls) {
-      const n = pl.normal, k = pl.constant;
-      for (let i = 0; i < p.length; i += 9) {
-        const d0 = n.x * p[i] + n.y * p[i + 1] + n.z * p[i + 2] + k, d1 = n.x * p[i + 3] + n.y * p[i + 4] + n.z * p[i + 5] + k, d2 = n.x * p[i + 6] + n.y * p[i + 7] + n.z * p[i + 8] + k;
-        if ((d0 > 0) === (d1 > 0) && (d1 > 0) === (d2 > 0)) continue; const q = [];
-        for (const [a, b, da, db] of [[i, i + 3, d0, d1], [i + 3, i + 6, d1, d2], [i + 6, i, d2, d0]]) if ((da > 0) !== (db > 0)) { const t = da / (da - db); q.push(p[a] + (p[b] - p[a]) * t + n.x * eps, p[a + 1] + (p[b + 1] - p[a + 1]) * t + n.y * eps, p[a + 2] + (p[b + 2] - p[a + 2]) * t + n.z * eps); }
-        if (q.length === 6) pos.push(...q);
-      }
-    }
-  }
-  if (pos.length) { const l = lineObj(pos, null, matLineCut); l.renderOrder = 4; gCaps.add(l); }
+  /* línia de tall: A per als elements que tallen (amb unió i retall entre cossos), B per als que no tallen */
+  const cl = lnCutLines(pls);
+  if (cl.A.length && S.style.ln.vis.A) { const l = lineObj(cl.A, null, matLineCut); l.renderOrder = 4; gCaps.add(l); }
+  if (cl.B.length && S.style.ln.vis.B) { const l = lineObj(cl.B, null, matLineCutB); l.renderOrder = 4; gCaps.add(l); }
   if (!CAPS_ON || !gCaps.children.some(o => o.userData.st)) return;
   const b = modelBox(), cx = new THREE.Vector3(...V.mul(V.add(b.min, b.max), 0.5)), R = Math.max(V.dist(b.min, b.max), 10) * 2; let last = null;
   for (const pl of pls) {
+    if (pl.floor) continue;
     const q = new THREE.Mesh(new THREE.PlaneGeometry(R, R), matCap), o = pl.projectPoint(cx, new THREE.Vector3()).addScaledVector(pl.normal, 0.0004);
     q.position.copy(o); q.lookAt(o.clone().add(pl.normal)); q.renderOrder = 3; q.userData.cap = 1; gCaps.add(q); last = q;
   }
@@ -189,6 +183,7 @@ function styleCapPlanes() {
 }
 /* siluetes: depenen de la càmera, es recalculen quan canvia */
 function updSil() {
+  if (!S.style.ln.vis.B) { if (gSil.children.length) disposeGroup(gSil); return; }
   if (!SIL.length) { if (gSil.children.length) disposeGroup(gSil); return; }
   const k = cam.matrixWorld.elements.join(',') + '|' + cam.projectionMatrix.elements.join(','); if (k === SILKEY) return; SILKEY = k; disposeGroup(gSil);
   if (SIL.length > 4 * 80000) return;
@@ -217,11 +212,11 @@ function styleLegend() {
 
 /* ---------- panell ---------- */
 const STYLE_UI = [
-  ['Arestes', [['ed.show', 'Visibles', [['all', 'Totes'], ['crease', 'Contorn i plecs'], ['none', 'Cap']]], ['ed.w', 'Gruix (px)', 0.5, 8, 0.5], ['ed.wp', 'Gruix de perfil (px)', 0.5, 10, 0.5], ['ed.color', 'Color', 'c'],
-    ['ed.by', 'Color per', [['fix', 'Color únic'], ['ifc', 'Classe IFC'], ['level', 'Nivell']]], ['ed.hid', 'Ocultes', [['off', 'Amagades'], ['dash', 'A traços'], ['grey', 'Contínues grises']]]]],
+  ['Arestes', [['ed.show', 'Visibles', [['all', 'Totes'], ['crease', 'Contorn i plecs'], ['none', 'Cap']]], ['ed.color', 'Color', 'c'],
+    ['ed.by', 'Color per', [['fix', 'Color únic'], ['ifc', 'Classe IFC'], ['level', 'Nivell']]], ['ed.soft', 'Suavitza arestes per sota de (°)', 0, 90, 1], ['ed.sm', 'Ombreig suau', 'b'], ['ed.hid', 'Ocultes (C)', [['off', 'Cap'], ['mark', 'Només elements marcats'], ['dash', 'Totes a traços'], ['grey', 'Totes contínues grises']]]]],
   ['Cares', [['fa.mode', 'Mode', [['shaded', 'Ombrejat'], ['flat', 'Color pla'], ['mono', 'Monocrom'], ['hidden', 'Línies ocultes'], ['xray', 'Raigs X'], ['wire', 'Filferro']]],
     ['fa.by', 'Color per', [['mat', 'Material'], ['ifc', 'Classe IFC'], ['level', 'Nivell'], ['tag', 'Etiqueta'], ['side', 'Anvers / revers']]], ['fa.op', 'Opacitat raigs X', 0.1, 0.9, 0.05], ['fa.mono', 'Color monocrom', 'c'], ['fa.front', 'Anvers', 'c'], ['fa.back', 'Revers', 'c']]],
-  ['Secció', [['sec.fill', 'Farciment del tall', [['hatch', 'Ratllat 45°'], ['cross', 'Ratllat creuat'], ['solid', 'Sòlid'], ['none', 'Cap']]], ['sec.color', 'Color', 'c'], ['sec.bgc', 'Fons del ratllat', 'c'], ['ed.wc', 'Gruix de la línia de tall (px)', 0.5, 12, 0.5], ['sec.lc', 'Color de la línia de tall', 'c']]],
+  ['Secció', [['sec.fill', 'Farciment del tall', [['grey', 'Gris'], ['hatch', 'Ratllat 45°'], ['cross', 'Ratllat creuat'], ['solid', 'Sòlid'], ['none', 'Cap']]], ['sec.tone', 'To del gris', 0.05, 1, 0.05], ['sec.color', 'Color', 'c'], ['sec.bgc', 'Fons del ratllat', 'c'], ['sec.lc', 'Color de la línia de tall', 'c']]],
   ['Fons', [['bg.mode', 'Tipus', [['grad', 'Degradat'], ['solid', 'Color únic']]], ['bg.top', 'Color / cel', 'c'], ['bg.bot', 'Horitzó', 'c']]],
   ['Sol i ombres', [['sun.on', 'Sol per data i hora', 'b'], ['sun.sh', 'Ombres projectades', 'b'], ['sun.date', 'Data', 'd'], ['sun.hour', 'Hora solar', 0, 24, 0.25], ['sun.lat', 'Latitud (°)', -66, 66, 0.1], ['sun.north', 'Nord del projecte (°)', -180, 180, 1],
     ['sun.li', 'Intensitat del sol', 0, 3, 0.1], ['sun.amb', 'Llum ambient', 0, 3, 0.05], ['sun.dark', 'Foscor de l’ombra a terra', 0, 1, 0.05]]],
@@ -252,4 +247,42 @@ function stylesPanel(b) {
   q('styDel').onclick = () => { if (STYLES_BUILTIN.some(x => x.name === s.name)) { toast('Els estils predefinits no es poden esborrar.'); return; } delStyle(s.name); toast('Estil esborrat del model i de la biblioteca.'); };
   q('styExp').onclick = () => outDlg('Exporta estils (JSON)', 'estils.gbstyle.json', stylesJSON(), 'application/json');
   q('styImp').onclick = () => { const f = el('input'); f.type = 'file'; f.accept = '.json,application/json'; f.onchange = () => { const rd = new FileReader(); rd.onload = () => { try { const n = importStyles(rd.result, true); renderTray(); toast(n + ' estils importats al model i a la biblioteca.'); } catch (e) { toast('No s’ha pogut importar: ' + e.message); } }; if (f.files[0]) rd.readAsText(f.files[0]); }; f.click(); };
+}
+/* ============================================================
+   v0.57 · arestes suaus i ombreig suau
+   · una aresta és suau si les dues cares que la comparteixen formen un angle (no nul) menor que ed.soft (20° per defecte)
+   · les arestes coplanàries no es tracten: són divisions volgudes · marques manuals: e.sf = 1 suau, 2 dura
+   · les suaus no es dibuixen (visor, exportacions, plànols) ni s'hi enganxa el cursor; el contorn surt com a silueta
+   · ombreig suau: normals per vèrtex fent la mitjana de les cares veïnes dins del mateix angle
+   ============================================================ */
+let SOFTC = new WeakMap(), SMOC = new WeakMap();
+function softAng() { const a = +((S.style && S.style.ed && S.style.ed.soft)); return isFinite(a) ? Math.max(0, Math.min(90, a)) : 20; }
+function softEdges(c) {
+  let r = SOFTC.get(c); if (r) return r; r = new Set(); const A = softAng(), cs = Math.cos(A * Math.PI / 180), adj = new Map(), key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+  let man = false; for (const e of c.edges.values()) if (e.sf) { man = true; break; }
+  if (A > 0 || man) {
+    if (A > 0) for (const f of c.faces.values()) for (const lp of [f.loop, ...f.holes]) for (let i = 0; i < lp.length; i++) { const k = key(lp[i], lp[(i + 1) % lp.length]); let l = adj.get(k); if (!l) adj.set(k, l = []); l.push(f.n); }
+    for (const e of c.edges.values()) {
+      if (e.sf === 1) { r.add(e.id); continue; } if (e.sf === 2 || A <= 0) continue;
+      const n = adj.get(key(e.a, e.b)); if (n && n.length === 2) { const d = V.dot(n[0], n[1]); if (d < 1 - 1e-7 && d > cs) r.add(e.id); }
+    }
+  }
+  SOFTC.set(c, r); return r;
+}
+function smoothN(c, f, vid) {
+  if (!S.style.ed.sm || softAng() <= 0) return f.n;
+  let m = SMOC.get(c); if (!m) { m = new Map(); for (const g of c.faces.values()) for (const lp of [g.loop, ...g.holes]) for (const v of lp) { let l = m.get(v); if (!l) m.set(v, l = []); if (!l.includes(g)) l.push(g); } SMOC.set(c, m); }
+  const l = m.get(vid); if (!l || l.length < 2) return f.n; const cs = Math.cos(softAng() * Math.PI / 180); let x = 0, y = 0, z = 0, k = 0;
+  for (const g of l) { const d = V.dot(g.n, f.n); if (g === f || (d > cs && d < 1 - 1e-7) || d >= 1 - 1e-7) { x += g.n[0]; y += g.n[1]; z += g.n[2]; k++; } }
+  if (k < 2) return f.n; const L = Math.hypot(x, y, z) || 1; return [x / L, y / L, z / L];
+}
+/* marques manuals sobre la selecció (arestes, o totes les dels grups seleccionats) */
+function edgeSoftSet(v) {
+  const { c } = ctxInfo(), ids = [...S.sel.edges].filter(id => c.edges.has(id)), gs = [...S.sel.groups].map(id => c.groups.get(id)).filter(Boolean);
+  if (!ids.length && !gs.length) { toast('Selecciona primer arestes o grups.'); return; }
+  pushUndo(v === 1 ? 'Suavitza arestes' : v === 2 ? 'Endureix arestes' : 'Arestes per angle'); let n = 0;
+  const put = e => { if (v) e.sf = v; else delete e.sf; n++; };
+  for (const id of ids) put(c.edges.get(id));
+  (function walk(list) { for (const g of list) { for (const e of g.edges.values()) put(e); walk([...g.groups.values()]); } })(gs);
+  refreshAll(); toast(n + ' aresta(es) ' + (v === 1 ? 'suaus' : v === 2 ? 'dures' : 'segons l’angle de l’estil (' + softAng() + '°)'));
 }

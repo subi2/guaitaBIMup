@@ -5,7 +5,7 @@
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.41.a';
+const VERSION = '0.57.0';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -38,7 +38,7 @@ const EDGE_BIAS = { value: OPT.edgeBias * 1e-5 };
 const S = {
   model: null, ctx: [], sel: { faces: new Set(), edges: new Set(), groups: new Set() },
   tool: 'select', mat: null, ifcActive: null, autoGroup: false, level: null,
-  style: null, show: { ground: true, axes: true, levels: true, grids: true, cube: true },
+  style: null, show: { ground: true, axes: true, levels: true, grids: true, cube: true, cam: true },
   hiddenIfc: new Set(), bg: 'sky', undo: [], redo: [], dirty: false, fileName: 'sense-títol.gbup.json', fileHandle: null,
   tabs: [], view: null, segs: 24, sides: 6, selAnn: { lvls: new Set(), grids: new Set(), dims: new Set(), texts: new Set() }, boolPend: null,
 };
@@ -72,7 +72,7 @@ function redo() { if (!S.redo.length) return; cancelTool(); S.undo.push(snapshot
 let saveT = null;
 function markDirty() {
   S.dirty = true; updFileInfo();
-  clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem('guaitabimup.autosave', snapshot()); } catch (e) { /* sense emmagatzematge */ } }, 800);
+  clearTimeout(saveT); saveT = setTimeout(() => { sessSave(snapshot()); }, 800);
 }
 
 /* ---------- escena ---------- */
@@ -95,15 +95,25 @@ function updGhost() {
   const P = S.planGhost && S.viewClips.length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
   renderer.localClippingEnabled = true;
   if (ghostStale) { gGhost.clear(); gModel.traverse(o => { if (o.isMesh && o.geometry && !(o.userData && o.userData.back)) { const m = new THREE.Mesh(o.geometry, matGhost); m.matrixAutoUpdate = false; m.matrix.copy(o.matrix); gGhost.add(m); } }); ghostStale = false; }
-  matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot)];
+  matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot - 0.003)]; /* v0.52: estrictament sota el pla inferior (sense cares coplanars al nivell) */
+}
+/* terra: pla + quadrícula; configuració de projecte a model.meta.ground (v0.50) */
+const GROUND_DEF = { col: '#C7C2B2', op: 1, grid: true, step: 1, ext: 50, gcol: '#B0AA98', gop: 0.45, major: 5, z: 0 };
+const groundCfg = () => ({ ...GROUND_DEF, ...((typeof S !== 'undefined' && S.model && S.model.meta && S.model.meta.ground) || {}) });
+let groundKey = '';
+function groundSync() {
+  const c = groundCfg(), k = JSON.stringify(c); if (k === groundKey) return; groundKey = k;
+  for (const o of gGround.children.slice()) { gGround.remove(o); o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }
+  if (c.op > 0) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: new THREE.Color(c.col), transparent: c.op < 1, opacity: c.op, depthWrite: c.op >= 1, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 })); pl.position.z = c.z - 0.002; pl.renderOrder = -2; gGround.add(pl); }
+  if (c.grid && c.step > 0) {
+    const n = Math.min(2000, Math.round(c.ext / c.step)), E = n * c.step, mi = [], ma = [];
+    for (let i = -n; i <= n; i++) { const v = i * c.step, arr = c.major > 1 && i % c.major === 0 ? ma : mi; arr.push(v, -E, c.z, v, E, c.z, -E, v, c.z, E, v, c.z); }
+    for (const [arr, op] of [[mi, c.gop], [ma, Math.min(1, c.gop * 1.8)]]) if (arr.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: new THREE.Color(c.gcol), transparent: true, opacity: op, depthWrite: false })); l.renderOrder = -1; gGround.add(l); }
+  }
+  try { needRender = true; } catch (e) { /* inici */ }
 }
 (function buildGround() {
-  const pl = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0xC7C2B2, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }));
-  pl.position.z = -0.002; gGround.add(pl);
-  const pts = [];
-  for (let i = -50; i <= 50; i++) { pts.push(i, -50, 0, i, 50, 0, -50, i, 0, 50, i, 0); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  gGround.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xB0AA98, transparent: true, opacity: 0.45 })));
+  groundSync();
   const ax = (color, d) => {
     const mk = (a, b, dashed) => { const gg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]); const l = new THREE.Line(gg, dashed ? new THREE.LineDashedMaterial({ color, dashSize: 0.25, gapSize: 0.35 }) : new THREE.LineBasicMaterial({ color })); if (dashed) l.computeLineDistances(); gAxes.add(l); };
     mk([0, 0, 0], V.mul(d, 1000), false); mk([0, 0, 0], V.mul(d, -1000), true);
@@ -112,7 +122,15 @@ function updGhost() {
 })();
 
 /* ---------- càmera i projeccions ---------- */
-const CAM = { target: new THREE.Vector3(3, 3, 1.2), theta: -Math.PI / 3, phi: 1.15, dist: 22, proj: 'axo', fov: OPT.fov, cavA: 45, cavR: 0.5, milK: 1 };
+const CAM = { target: new THREE.Vector3(3, 3, 1.2), theta: -Math.PI / 3, phi: 1.15, dist: 22, proj: 'axo', fov: OPT.fov, cavA: 45, cavR: 0.5, milK: 1, lens: null };
+/* v0.52 · lent física de la cònica: focal equivalent d’un pas universal de 35 mm (36×24), referida a l’amplada de 36 mm del fotograma */
+const LENS_DEF = { f: 35, v2: false, shift: 0, near: 0, frame: 'none', thirds: false, hor: false, eye: 1.6, keep: false };
+const FRAME_AR = { none: 0, '3:2': 1.5, '16:9': 16 / 9, '4:3': 4 / 3, A: Math.SQRT2 };
+CAM.lens = { ...LENS_DEF };
+/* fotograma dins del visor (px): el rectangle més gran amb la proporció triada; sense guia, tot el visor */
+function camFrame(w, h) { const ar = FRAME_AR[CAM.lens.frame] || 0; if (!ar) return { x: 0, y: 0, w, h }; let fw = w, fh = w / ar; if (fh > h) { fh = h; fw = h * ar; } return { x: (w - fw) / 2, y: (h - fh) / 2, w: fw, h: fh }; }
+/* camp de visió vertical del visor: la focal fixa l’angle horitzontal del fotograma (18 mm / f) */
+function camVfov() { if (CAM.proj !== 'conic') return CAM.fov; const w = view.clientWidth || 1, h = view.clientHeight || 1, fr = camFrame(w, h), tH = 18 / CAM.lens.f * (w / fr.w); return THREE.MathUtils.radToDeg(2 * Math.atan(tH * h / w)); }
 const camP = new THREE.PerspectiveCamera(35, 1, 0.05, 5000), camO = new THREE.OrthographicCamera(-1, 1, 1, -1, -3000, 6000);
 let cam = camP, needRender = true, camAnim = null;
 function camDir() { const st = Math.sin(CAM.phi); return new THREE.Vector3(st * Math.cos(CAM.theta), st * Math.sin(CAM.theta), Math.cos(CAM.phi)); }
@@ -122,8 +140,15 @@ function updCam() {
   const dir = camDir(), flat = new THREE.Vector3(-Math.cos(CAM.theta), -Math.sin(CAM.theta), 0);
   const pole = CAM.phi < 0.02 || CAM.phi > Math.PI - 0.02;
   if (CAM.proj === 'conic') {
-    cam = camP; camP.fov = CAM.fov; camP.aspect = asp; camP.near = Math.max(0.05, CAM.dist / 150); camP.far = CAM.dist * 30 + 1500;
-    camP.position.copy(CAM.target).addScaledVector(dir, CAM.dist); camP.up.copy(pole ? flat : new THREE.Vector3(0, 0, 1)); camP.lookAt(CAM.target); camP.updateProjectionMatrix();
+    const L = CAM.lens, v2 = L.v2 && !pole && CAM.phi > 0.12 && CAM.phi < Math.PI - 0.12;
+    cam = camP; camP.fov = camVfov(); camP.aspect = asp; camP.near = L.near > 0 ? L.near : Math.max(0.05, CAM.dist / 150); camP.far = CAM.dist * 30 + 1500;
+    camP.position.copy(CAM.target).addScaledVector(dir, CAM.dist); camP.up.copy(pole ? flat : new THREE.Vector3(0, 0, 1));
+    if (v2) camP.lookAt(camP.position.clone().add(flat)); else camP.lookAt(CAM.target); camP.updateProjectionMatrix();
+    /* correcció de verticals (2 punts) i desplaçament de l’objectiu: descentrament vertical de la projecció */
+    const fr = camFrame(w, h); let sy = (L.shift || 0) * 2 * fr.h / h;
+    if (v2) { const dz = CAM.target.z - camP.position.z, dh = Math.hypot(CAM.target.x - camP.position.x, CAM.target.y - camP.position.y); if (dh > 1e-6) sy += camP.projectionMatrix.elements[5] * dz / dh; }
+    sy = Math.max(-4, Math.min(4, sy)); if (sy) { camP.projectionMatrix.elements[9] += sy; camP.projectionMatrixInverse.copy(camP.projectionMatrix).invert(); }
+    if (typeof camSync === 'function') camSync();
   } else {
     cam = camO; const hh = CAM.dist * Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2));
     camO.left = -hh * asp; camO.right = hh * asp; camO.top = hh; camO.bottom = -hh;
@@ -141,14 +166,14 @@ function updCam() {
   }
   cam.updateMatrixWorld(true); needRender = true;
 }
-function setProj(p) { CAM.proj = p; updCam(); syncUI(); }
-function camState() { return { t: CAM.target.toArray(), theta: CAM.theta, phi: CAM.phi, dist: CAM.dist, proj: CAM.proj }; }
+function setProj(p) { const was = CAM.proj, c = p === 'conic' && was !== 'conic' && typeof S !== 'undefined' && S.model.meta.ccam; CAM.proj = p; if (c) animateCam(camFromRec(c)); updCam(); syncUI(); }
+function camState() { return { t: CAM.target.toArray(), theta: CAM.theta, phi: CAM.phi, dist: CAM.dist, proj: CAM.proj, lens: { ...CAM.lens } }; }
 const camHist = [];
 function pushHist() { const s = camState(); const l = camHist[camHist.length - 1]; if (l && JSON.stringify(l) === JSON.stringify(s)) return; camHist.push(s); if (camHist.length > 40) camHist.shift(); }
-function prevView() { const s = camHist.pop(); if (!s) { toast('No hi ha cap vista anterior.'); return; } animateCam({ t: s.t, theta: s.theta, phi: s.phi, dist: s.dist, proj: s.proj }, 220, true); }
+function prevView() { const s = camHist.pop(); if (!s) { toast('No hi ha cap vista anterior.'); return; } animateCam({ t: s.t, theta: s.theta, phi: s.phi, dist: s.dist, proj: s.proj, lens: s.lens }, 220, true); }
 function animateCam(to, ms, nohist) {
   if (!nohist) pushHist();
-  const from = camState(); if (to.proj && to.proj !== CAM.proj) CAM.proj = to.proj;
+  const from = camState(); if (to.proj && to.proj !== CAM.proj) CAM.proj = to.proj; if (to.lens) { to = { ...to, lens: { ...LENS_DEF, ...to.lens } }; CAM.lens = { ...to.lens, f: from.lens.f }; }
   let dth = (to.theta == null ? from.theta : to.theta) - from.theta; while (dth > Math.PI) dth -= 2 * Math.PI; while (dth < -Math.PI) dth += 2 * Math.PI;
   camAnim = { from, to, dth, t0: performance.now(), ms: ms == null ? OPT.anim : ms }; needRender = true;
 }
@@ -157,6 +182,7 @@ function stepAnim(now) {
   CAM.theta = a.from.theta + a.dth * e;
   if (a.to.phi != null) CAM.phi = a.from.phi + (a.to.phi - a.from.phi) * e;
   if (a.to.dist != null) CAM.dist = a.from.dist + (a.to.dist - a.from.dist) * e;
+  if (a.to.lens) CAM.lens.f = a.from.lens.f * Math.pow(a.to.lens.f / a.from.lens.f, e);
   if (a.to.t) CAM.target.set(a.from.t[0] + (a.to.t[0] - a.from.t[0]) * e, a.from.t[1] + (a.to.t[1] - a.from.t[1]) * e, a.from.t[2] + (a.to.t[2] - a.from.t[2]) * e);
   if (k >= 1) camAnim = null; updCam();
 }
@@ -179,7 +205,7 @@ function fitView(selOnly) {
     for (const gid of S.sel.groups) { const g = c.groups.get(gid); if (g) K.bbox(g, V.add(off, g.t), bb); }
     if (isFinite(bb.min[0])) b = bb; }
   const cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 1);
-  animateCam({ t: cx, dist: r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05 });
+  animateCam({ t: cx, dist: r / Math.sin(THREE.MathUtils.degToRad(camVfov() / 2)) * 1.05 });
 }
 
 /* ---------- reconstrucció de malles ---------- */
@@ -206,7 +232,7 @@ function faceGeometry(c, off, faces, colorOf, fmap) {
   const pos = [], col = [], nor = [];
   for (const f of faces) {
     if (colorOf) _c.set(colorOf(f));
-    for (const t of triangulate(c, f)) { for (const id of t) { const p = K.P(c, id); pos.push(p[0] + off[0], p[1] + off[1], p[2] + off[2]); nor.push(f.n[0], f.n[1], f.n[2]); if (colorOf) col.push(_c.r, _c.g, _c.b); } if (fmap) fmap.push(f.id); }
+    for (const t of triangulate(c, f)) { for (const id of t) { const p = K.P(c, id); pos.push(p[0] + off[0], p[1] + off[1], p[2] + off[2]); const nn = smoothN(c, f, id); nor.push(nn[0], nn[1], nn[2]); if (colorOf) col.push(_c.r, _c.g, _c.b); } if (fmap) fmap.push(f.id); }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   if (colorOf) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -226,12 +252,12 @@ function buildContainer(c, off, path, st) {
   if (side) { const bk = new THREE.Mesh(geo, matBack); bk.userData = { c, path, fmap, off, back: true }; bk.castShadow = bk.receiveShadow = shadow; gModel.add(bk); pickMeshes.push(bk); }
   const edges = [...c.edges.values()];
   if (dim) { const ln = new THREE.LineSegments(edgeGeometry(c, off, edges), matEdgeDim); ln.visible = sty.edges || sty.wire; gModel.add(ln); }
-  else { const adj = styleEdges(c, off, edges, faces, st); styleCaps(geo, faces, adj); }
+  else { const adj = styleEdges(c, off, edges, faces, st, path); styleCaps(geo, faces, adj, path); }
   for (const v of c.verts.values()) SNAP.verts.push({ p: V.add(v.p, off) });
-  for (const e of edges) SNAP.edges.push({ a: V.add(K.P(c, e.a), off), b: V.add(K.P(c, e.b), off), c, id: e.id, path });
+  const sfE = softEdges(c); for (const e of edges) if (!sfE.has(e.id)) SNAP.edges.push({ a: V.add(K.P(c, e.a), off), b: V.add(K.P(c, e.b), off), c, id: e.id, path });
   for (const g of c.groups.values()) {
-    if (!tagVisible(g.tag) || (g.ifc && S.hiddenIfc.has(g.ifc)) || (!g.ifc && path.length === 0 && S.hiddenIfc.has('-'))) continue;
-    buildContainer(g, V.add(off, g.t), [...path, g.id], { color: groupColor(g, st.color), ecol: groupEdgeColor(g, st.ecol) });
+    if (!tagVisible(g.tag) || (g.ifc && S.hiddenIfc.has(g.ifc)) || (!g.ifc && path.length === 0 && S.hiddenIfc.has('-')) || (S.pubOnly && path.length === 0 && !S.pubOnly.has(g.id))) continue;
+    buildContainer(g, V.add(off, g.t), [...path, g.id], { color: groupColor(g, st.color), ecol: groupEdgeColor(g, st.ecol), thru: st.thru || !!g.thru });
   }
 }
 function rebuild() {
@@ -239,7 +265,7 @@ function rebuild() {
   applyStyleEnv();
   bsecBar();
   buildContainer(S.model.root, [0, 0, 0], [], { color: null, ecol: null });
-  styleCapPlanes();
+  lnFinishEdges(); styleCapPlanes(); lnRefBuild();
   rebuildSel(); rebuildAnnot(); needRender = true;
 }
 function rebuildSel() {
@@ -524,7 +550,9 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (camAnim) stepAnim(now);
   if (!needRender) return; needRender = false;
-  gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
-  updSil(); updBackCorner(); updGhost(); if (renderer) renderer.render(scene, cam);
-  updLabels(); gripsUpdate(); drawCube();
+  groundSync(); gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
+  /* planta: el pla del terra queda sota el pla inferior de la vista; el retall no és exacte (precisió) i deixaria franges, s'amaga el pla i es manté la quadrícula */
+  { const fl = S.viewClips && S.viewClips.find(q => q.floor), hide = !!fl && groundCfg().z < -fl.constant + 0.05; for (const o of gGround.children) if (o.isMesh) o.visible = !hide; }
+  updSil(); updBackCorner(); updGhost(); if (typeof camGlyphSync === 'function') camGlyphSync(); if (renderer) { renderer.render(scene, cam); lnRenderRef(); if (typeof camRenderPass === 'function') camRenderPass(); }
+  updLabels(); gripsUpdate(); drawCube(); if (typeof camOverlay === 'function') camOverlay();
 }

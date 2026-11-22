@@ -160,3 +160,57 @@ function compPanel(b, g, h) {
     for (const [k, lab, def] of [['flip', 'Girat (obre cap a l’altra cara)', false], ['cut', 'Obre el forat al mur', true]]) { const i = el('input'); i.type = 'checkbox'; i.checked = par[k] == null ? def : !!par[k]; i.dataset.par = k; i.onchange = () => h.up(() => { par[k] = i.checked; }); h.row(lab, i); } }
   else { h.sel('Nivell', 'lv', h.lvlOpts, v => { par.lv = +v; g.level = +v; }); h.num('Desfasament (m)', 'off', -100, 100); h.num('Rotació (°)', 'rot', -360, 360); }
 }
+
+/* ============================================================
+   v0.43.0 · eines Portes i Finestres: catàleg il·lustrat dels
+   components del model classificats IfcDoor / IfcWindow.
+   ============================================================ */
+const COMP_THUMB = new Map();
+function compThumb(d, W) {
+  W = W || 96; const key = d.id + ':' + (d.ver || 1) + ':' + W, hit = COMP_THUMB.get(key); if (hit) return hit;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = Math.round(W * 0.8); const x = cv.getContext('2d'), a = -0.55, ca = Math.cos(a), sa = Math.sin(a), tl = 0.5;
+  const prj = p => { const u = p[0] * ca - p[1] * sa, dp = p[0] * sa + p[1] * ca; return [u, p[2] * Math.cos(tl) - dp * Math.sin(tl), dp]; };
+  const P = d.v.map(prj); let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const q of P) { u0 = Math.min(u0, q[0]); u1 = Math.max(u1, q[0]); v0 = Math.min(v0, q[1]); v1 = Math.max(v1, q[1]); }
+  const k = Math.min((cv.width - 10) / Math.max(u1 - u0, 1e-6), (cv.height - 10) / Math.max(v1 - v0, 1e-6)), ox = (cv.width - (u1 - u0) * k) / 2, oy = (cv.height - (v1 - v0) * k) / 2, X = q => [ox + (q[0] - u0) * k, cv.height - oy - (q[1] - v0) * k];
+  const base = d.kind === 'window' ? [111, 183, 230] : [181, 120, 80], mats = S.model.materials || [], L = V.norm([-0.4, -0.6, 0.7]);
+  const fs = d.f.map(f => { let dp = 0; for (const i of f.l) dp += P[i][2]; return { f, dp: dp / f.l.length }; }).sort((p, q) => q.dp - p.dp);
+  x.lineJoin = 'round';
+  for (const { f } of fs) {
+    let c = base; const m = mats[f.m]; if (m && m.color) { const cc = new THREE.Color(m.color); c = [cc.r * 255, cc.g * 255, cc.b * 255]; }
+    const sh = 0.55 + 0.45 * Math.abs(V.dot(f.n, L)); x.fillStyle = 'rgb(' + c.map(v => Math.round(Math.min(255, v * sh))).join(',') + ')'; x.strokeStyle = 'rgba(20,22,26,.55)'; x.lineWidth = 0.7;
+    x.beginPath(); for (const lp of [f.l, ...f.h]) lp.forEach((i, j) => { const q = X(P[i]); j ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]); x.closePath(); });
+    x.fill('evenodd'); x.stroke();
+  }
+  const url = cv.toDataURL('image/png'); COMP_THUMB.set(key, url); return url;
+}
+function compInfoRows(d) {
+  const n = compCount(d.id), mats = new Set(d.f.map(f => f.m)).size, sill = d.kind === 'door' ? 0 : OPT.sillH;
+  return [['Amplada', fmt(d.size[0]) + ' m'], ['Alçada', fmt(d.size[2]) + ' m'], ['Gruix', fmt(d.size[1]) + ' m'], ['Ampit en inserir', fmt(sill) + ' m'], ['Superfície del forat', fmt(d.size[0] * d.size[2]) + ' m²'],
+    ['Classe IFC', compIfc(d)], ['Cares · materials', d.f.length + ' · ' + mats], ['Instàncies', String(n)]];
+}
+function compCatalogPanel(kind) {
+  return b => {
+    const defs = compDefs().filter(d => d.kind === kind), lbl = kind === 'door' ? 'porta' : 'finestra';
+    if (!defs.length) { b.appendChild(el('div', 'empty', 'Cap ' + lbl + ' al model. Crea-la al panell «Components» (Importa SKP o «Del grup seleccionat») amb el tipus ' + (kind === 'door' ? 'Porta' : 'Finestra') + '.')); return; }
+    const grid = el('div'); grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;margin-bottom:6px'; b.appendChild(grid);
+    for (const d of defs) {
+      const sel = S.compId === d.id, c = el('div', 'row' + (sel && (S.tool === 'door' || S.tool === 'win') ? ' on' : '')); c.dataset.cat = d.id; c.style.cssText = 'flex-direction:column;align-items:stretch;gap:3px;padding:4px;border:1px solid var(--line);border-radius:6px;cursor:pointer' + (sel ? ';outline:1px solid var(--accent)' : '');
+      const im = el('img'); im.src = compThumb(d); im.style.cssText = 'width:100%;height:auto;background:#fff;border-radius:4px;display:block'; im.alt = d.name; c.appendChild(im);
+      c.appendChild(el('div', '', esc(d.name))); c.appendChild(el('div', 'dim', fmt(d.size[0]) + ' × ' + fmt(d.size[2]) + ' m'));
+      const bt = el('button', 'btn sm acc', 'Insereix'); bt.dataset.catins = d.id; bt.onclick = e => { e.stopPropagation(); S.compId = d.id; setTool(kind === 'door' ? 'door' : 'win'); };
+      c.appendChild(bt); c.onclick = () => { S.compId = d.id; renderTray(); }; grid.appendChild(c);
+    }
+    const d = defs.find(x => x.id === S.compId); if (d) { const box = el('div'); box.dataset.catinfo = d.id; box.appendChild(el('div', 'row hd', 'Característiques · ' + esc(d.name))); for (const [k, v] of compInfoRows(d)) { const r = el('div', 'row'); r.appendChild(el('span', '', esc(k))); const sp = el('span', 'mono', esc(v)); sp.style.marginLeft = 'auto'; r.appendChild(sp); box.appendChild(r); } b.appendChild(box); }
+  };
+}
+const doorsPanel = compCatalogPanel('door'), winsPanel = compCatalogPanel('window');
+function compReveal(key) { const t = TAB_DEFS.find(x => x[2].includes(key)); if (!t) return; const col = tabColOf(t[0]); LAY.act[col] = t[0]; TRAY.closed.delete(key); for (const k of ['ifc', 'outl']) TRAY.closed.add(k); laySave(); renderTray(); }
+for (const [name, kind, key] of [['door', 'door', 'doors'], ['win', 'window', 'wins']]) {
+  TOOLS[name] = { ...TOOLS.comp, onSet() { const d = compDef(S.compId); if (!d || d.kind !== kind) { const f = compDefs().find(x => x.kind === kind); S.compId = f ? f.id : null; } compReveal(key); },
+    move(ev, mx, my) { const d = compDef(S.compId), pk = pick(mx, my); st.pk = pk; if (!d || d.kind !== kind) { showTip(mx, my, pk, 'Tria una ' + (kind === 'door' ? 'porta' : 'finestra') + ' al panell'); return; } return TOOLS.comp.move(ev, mx, my); },
+    down(ev, mx, my) { const d = compDef(S.compId); if (!d || d.kind !== kind) { toast('Tria una ' + (kind === 'door' ? 'porta' : 'finestra') + ' al catàleg.'); return; } return TOOLS.comp.down(ev, mx, my); } };
+}
+/* obertures dels components allotjats, en només lectura, al panell del mur */
+function wallCompHoles(g) {
+  const out = []; eachContainer(S.model.root, [0, 0, 0], c => { for (const x of c.groups.values()) if (x.par && x.par.type === 'comp' && x.par.host === g.id && x.par.cut !== false) { const d = compDef(x.par.cid); if (d) out.push({ g: x, d }); } }); return out;
+}

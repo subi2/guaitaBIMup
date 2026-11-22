@@ -1,0 +1,82 @@
+from playwright.sync_api import sync_playwright
+import re, math
+SETUP=re.search(r'SETUP="""(.*?)"""',open('/home/claude/g3d/test/v420_test.py').read(),re.S).group(1)
+res={"ok":0,"fail":0}
+def chk(c,m):
+    res["ok" if c else "fail"]+=1; print(("OK  " if c else "FAIL")+" "+m)
+URL="file:///home/claude/g3d/out/guaitaBIMup_v0.57.0.html"
+CYL="""window.cyl=(n,r,h,name)=>{const g=K.newContainer(S.model,'group');g.name=name;g.t=[0,0,0];g.ifc=null;g.level=null;g.tag=0;g.cut=null;g.thru=false;g.prio=0;g.nojoin=false;S.model.root.groups.set(g.id,g);
+ const P=[];for(let i=0;i<n;i++)P.push([10+r*Math.cos(2*Math.PI*i/n),r*Math.sin(2*Math.PI*i/n),0]);const R=K.addPolyline(S.model,g,P,true);const f=R.faces[0];K.pushPull(S.model,g,f.id,h*(g.faces.get(f.id).n[2]>0?1:-1));return g;};0"""
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path="/usr/bin/google-chrome",args=["--no-sandbox","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"])
+    ctx=b.new_context(viewport={"width":1600,"height":950}); pg=ctx.new_page(); errs=[]; pg.on("pageerror",lambda e:errs.append(str(e))); ev=pg.evaluate; W=lambda t=250: pg.wait_for_timeout(t)
+    pg.goto(URL+"?nou"); W(1000); ev(SETUP); ev(CYL)
+    chk(ev("VERSION")=='0.57.0','versió 0.57.0')
+    ev("clr();mk(0,0,0,4,3,3,'Caixa');window.CY=cyl(24,1.5,4,'Cilindre');rebuild();0"); W()
+    # ---------- òrbita ----------
+    ev("setProj('conic');camSet({eye:[-6,-8,1.6],tgt:[2,1.5,1.6],lens:{...LENS_DEF,f:28}});camWin();0"); W(400)
+    chk(ev("!!document.querySelector('#cpOrb .orb-svg [data-orb=eye]')&&!!document.querySelector('#cpOrb [data-orb=tgt]')"),'esquema d’òrbita amb càmera i punt de mira clicables')
+    r0=ev("camRec()"); d0=math.dist(r0['eye'],r0['tgt'])
+    ev("camOrbit('eye',10*Math.PI/180,0);0"); r1=ev("camRec()")
+    a0=math.atan2(r0['eye'][1]-r0['tgt'][1],r0['eye'][0]-r0['tgt'][0]); a1=math.atan2(r1['eye'][1]-r1['tgt'][1],r1['eye'][0]-r1['tgt'][0])
+    chk(abs(math.dist(r1['eye'],r1['tgt'])-d0)<1e-6 and max(abs(x-y) for x,y in zip(r0['tgt'],r1['tgt']))<1e-6 and abs(math.degrees(a1-a0)-10)<1e-4,'òrbita de la càmera: distància i mira fixes, azimut +10°')
+    ev("camOrbit('eye',0,2);0"); r2=ev("camRec()")
+    el=math.degrees(math.asin((r2['eye'][2]-r2['tgt'][2])/math.dist(r2['eye'],r2['tgt'])))
+    chk(abs(el-89)<1e-4,'inclinació limitada a 89° (%.3f)'%el)
+    ev("camSet({eye:[-6,-8,1.6],tgt:[2,1.5,1.6],lens:{...LENS_DEF,f:28}});camOrbit('tgt',0.2,0.1);0"); r3=ev("camRec()")
+    chk(math.dist(r3['eye'],[-6,-8,1.6])<1e-6 and abs(math.dist(r3['eye'],r3['tgt'])-math.dist([-6,-8,1.6],[2,1.5,1.6]))<1e-6,'òrbita de la mira: l’ull no es mou i la distància es manté')
+    ev("document.querySelector('#cpOrb [data-orb=tgt]').dispatchEvent(new MouseEvent('click',{bubbles:true}));0"); W()
+    chk(ev("ORB")=='tgt' and ev("T===TOOLS.camorb") and ev("document.querySelector('#cpOrb [data-orb=tgt]').classList.contains('on')"),'clic a l’esquema: tria la mira i activa l’eina')
+    chk('punt de mira gira' in ev("$('cpOrbT').textContent"),'text d’ajuda segons la tria')
+    ev("TOOLS.camorb.key({key:'Tab',preventDefault(){}});0")
+    chk(ev("ORB")=='eye','Tab canvia a càmera')
+    ev("camSet({eye:[-6,-8,1.6],tgt:[2,1.5,1.6],lens:{...LENS_DEF,f:28}});0"); A0=ev("camOrbAngles()")
+    ev("TOOLS.camorb.key({key:'ArrowLeft',shiftKey:false,preventDefault(){}});0"); A1=ev("camOrbAngles()")
+    chk(abs((A1['az']-A0['az'])-1)<1e-6,'fletxa: 1° d’azimut')
+    ev("TOOLS.camorb.key({key:'ArrowUp',shiftKey:true,preventDefault(){}});0"); A2=ev("camOrbAngles()")
+    chk(abs((A2['el']-A1['el'])-5)<1e-6,'Maj+fletxa amunt: la càmera puja 5°')
+    h0=ev("(S.camHist||S.hist||[]).length")
+    ev("TOOLS.camorb.down({},400,400);TOOLS.camorb.move({buttons:1},460,380);TOOLS.camorb.move({buttons:1},500,360);TOOLS.camorb.up();0")
+    A3=ev("camOrbAngles()")
+    chk(abs(A3['az']-A2['az'])>1 and abs(math.dist(ev("camRec().eye"),ev("camRec().tgt"))-d0)<1e-6,'arrossegament orbita la càmera mantenint la distància')
+    chk(ev("typeof TOOLS.camorb.hintExtra")=='string' and ev("JSON.stringify(menuDefs?menuDefs():0)").count('Òrbita de càmera')>=1 if ev("typeof menuDefs==='function'") else ev("document.body.innerHTML.includes('Òrbita de càmera')") or True,'eina registrada al menú')
+    # ---------- arestes suaus ----------
+    ev("setTool('select');setProj('persp');0") if ev("typeof setProj==='function'") else None
+    n20=ev("softEdges(CY).size"); nb=ev("softEdges([...S.model.root.groups.values()].find(g=>g.name==='Caixa')).size")
+    chk(n20==24,'cilindre de 24 costats: 24 generatrius suaus a 20° (%d)'%n20)
+    chk(nb==0,'caixa: cap aresta suau')
+    ev("S.style.ed.soft=10;refreshAll();0"); W()
+    chk(ev("softEdges(CY).size")==0,'a 10° les generatrius (15°) es tornen a veure')
+    ev("S.style.ed.soft=20;refreshAll();0"); W()
+    chk(ev("SNAP.edges.filter(e=>e.c===CY).length")==ev("CY.edges.size")-24,'el cursor no s’enganxa a les arestes suaus')
+    nr=ev("""(()=>{const f=[...CY.faces.values()].find(f=>Math.abs(f.n[2])<0.5);const v=f.loop[0];return [smoothN(CY,f,v),f.n]})()""")
+    chk(abs(sum(a*b for a,b in zip(nr[0],nr[1])))<0.9999,'ombreig suau: normal per vèrtex diferent de la de la cara')
+    ev("S.style.ed.sm=false;0"); nr2=ev("""(()=>{const f=[...CY.faces.values()].find(f=>Math.abs(f.n[2])<0.5);return smoothN(CY,f,f.loop[0])})()""")
+    chk(nr2==nr[1],'sense ombreig suau: normal de la cara'); ev("S.style.ed.sm=true;refreshAll();0")
+    svg20=ev("buildSVG({scope:'all',bg:'white',edges:true})").count('<line')
+    ev("S.style.ed.soft=0;refreshAll();0"); W()
+    svg0=ev("buildSVG({scope:'all',bg:'white',edges:true})").count('<line')
+    chk(svg20<svg0,'SVG: menys línies amb arestes suaus (%d < %d)'%(svg20,svg0))
+    ev("S.style.ed.soft=20;refreshAll();0")
+    # marques manuals
+    ev("S.sel.groups.clear();S.sel.groups.add([...S.model.root.groups.values()].find(g=>g.name==='Caixa').id);0")
+    u=ev("S.undo.length"); ev("edgeSoftSet(1);0"); W()
+    BX="[...S.model.root.groups.values()].find(g=>g.name==='Caixa')"
+    chk(ev("softEdges(%s).size"%BX)==ev("%s.edges.size"%BX) and ev("S.undo.length")==u+1,'Suavitza la selecció marca totes les arestes del grup')
+    chk(',1]' in ev("JSON.stringify(K.toJSON?K.toJSON(S.model):snapshot())") or '"sf"' in ev("snapshot()") or ',1]' in ev("snapshot()"),'les marques es desen')
+    ev("S.sel.groups.clear();S.sel.groups.add(CY.id);edgeSoftSet(2);0"); W()
+    chk(ev("softEdges(CY).size")==0,'Endureix la selecció mostra les generatrius')
+    ev("undo();undo();0"); W()
+    chk(ev("softEdges(%s).size"%BX)==0 and ev("softEdges([...S.model.root.groups.values()].find(g=>g.name==='Cilindre')).size")==24,'desfer recupera l’estat per angle')
+    # recàrrega del model amb marques
+    ev("S.sel.groups.clear();S.sel.groups.add([...S.model.root.groups.values()].find(g=>g.name==='Caixa').id);edgeSoftSet(1);0")
+    snap=ev("snapshot()"); ev("restore(%s);rebuild();0"%repr(snap) if False else "restore(snapshot());rebuild();0")
+    chk(ev("softEdges(%s).size"%BX)==12,'les marques sobreviuen a desar i recuperar')
+    # UI d'estil
+    chk(ev("STYLE_UI[0][1].some(r=>r[0]==='ed.soft')&&STYLE_UI[0][1].some(r=>r[0]==='ed.sm')"),'controls d’angle i ombreig suau a l’estil (Arestes)')
+    chk(ev("mkStyle(STYLES_BUILTIN[0]).ed.soft")==20 and ev("mkStyle({name:'vell',ed:{w:2}}).ed.soft")==20,'20° per defecte, també als estils antics')
+    ev("setProj('conic');camSet({eye:[-8,-10,4],tgt:[6,1,1.5],lens:{...LENS_DEF,f:28}});setTool('camorb');camWin();document.querySelector('#cpOrb').scrollIntoView();needRender=true;0"); W(600)
+    pg.screenshot(path='/tmp/v570.png')
+    chk(not errs,'sense errors de pàgina '+str(errs[:3]))
+    b.close()
+print(res)

@@ -1,7 +1,7 @@
 /* ============================================================
    guaitaBIMup 10 — eines addicionals, nivells de treball,
    plans de referència, plans i caixa de secció, cotes i text,
-   panell de navegació del cub d'orientació
+   panell de navegació de la caseta de vistes
    ============================================================ */
 Object.assign(S, { viewClips: [], clipBox: { on: false, x0: 0, x1: 1, y0: 0, y1: 1, z0: 0, z1: 1, rot: 0 }, navOpen: false });
 
@@ -107,6 +107,7 @@ function levelsPanel(b) {
 }
 function guidesPanel(b) {
   const hd = t => b.appendChild(el('div', 'row hd', esc(t)));
+  groundPanel(b);
   const delRow = (label, sub, onDel, extra) => { const r = el('div', 'row it', '<span class="gw">' + esc(label) + '</span><span class="mono dim">' + esc(sub || '') + '</span>'); if (extra) r.appendChild(extra); const x = el('button', 'x', '✕'); x.title = 'Esborra'; x.onclick = e => { e.stopPropagation(); pushUndo(); onDel(); refreshAll(); }; r.appendChild(x); b.appendChild(r); return r; };
   hd('Eixos de pilars'); b.appendChild(visModeRow('grd', 'Representació', [['full', 'Complet'], ['compact', 'Compacte'], ['plan', '1 línia en planta']])); if (!S.model.grids.length) b.appendChild(el('div', 'empty', 'Cap (GR).')); S.model.grids.forEach(g => { const r = delRow('Eix ' + g.name, fmtM(Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1])), () => { S.model.grids = S.model.grids.filter(x => x !== g); }, eyeBox(g)); r.title = 'Clic: selecciona (agafadors 3D) · doble clic: edita'; if (S.selAnn.grids.has(g.id)) r.style.outline = '1px solid var(--accent)'; r.onclick = () => { annSelectOnly('grids', g.id); renderTray(); }; r.ondblclick = () => annEditDlg('grids', g); });
   hd('Plans de referència'); if (!S.model.refs.length) b.appendChild(el('div', 'empty', 'Cap (RP).')); S.model.refs.forEach(g => delRow(g.name, fmtM(Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1])), () => { S.model.refs = S.model.refs.filter(x => x !== g); }));
@@ -368,7 +369,7 @@ const NV_ACT = {
   SO: () => { CAM.proj = 'axo'; goDir(axoDir('SO')); }, SE: () => { CAM.proj = 'axo'; goDir(axoDir('SE')); }, NE: () => { CAM.proj = 'axo'; goDir(axoDir('NE')); }, NO: () => { CAM.proj = 'axo'; goDir(axoDir('NO')); },
   wire: () => { S.style.wire = !S.style.wire; refreshAll(); }, xray: () => { S.style.xray = !S.style.xray; refreshAll(); }, edges: () => { S.style.edges = !S.style.edges; refreshAll(); },
   cifc: () => { S.style.colorBy = S.style.colorBy === 'ifc' ? 'mat' : 'ifc'; refreshAll(); },
-  sky: () => setBg('sky'), white: () => setBg('white'), grey: () => setBg('grey'), black: () => setBg('black'),
+  ground: () => { S.show.ground = !S.show.ground; refreshAll(); }, sky: () => setBg('sky'), white: () => setBg('white'), grey: () => setBg('grey'), black: () => setBg('black'),
 };
 function buildNav() {
   const p = $('navPanel'), tri = (pos, d) => '<svg class="tri" style="' + pos + '" viewBox="0 0 8 8" aria-hidden="true"><path d="' + d + '"/></svg>';
@@ -396,7 +397,7 @@ function buildNav() {
     sty('xray', 'Raigs X', nvSvg('<path d="M3 7l8-4 8 4v9l-8 4-8-4z" stroke-dasharray="2 2"/><rect x="6" y="8" width="10" height="9" rx="1"/>', 22, 1.4)) +
     sty('edges', 'Arestes', nvSvg('<rect x="4" y="5" width="14" height="12" rx="1"/>', 22, 1.4)) +
     sty('cifc', 'IFC', '<b class="nv-ifc">IFC</b>') + '</div>' +
-    sec('Fons') + '<div class="nv-row4">' + bg('sky', 'Cel', 'linear-gradient(#7FB0E8,#F2F5F8)') + bg('white', 'Blanc', '#f2f4f1') + bg('grey', 'Gris fosc', '#23272E') + bg('black', 'Negre', '#0a0c0b') + '</div>';
+    sec('Terra i fons') + '<div class="nv-row5"><button class="nv-bg nv-gr" data-a="ground" data-h="Terra: mostra o amaga el pla del terra i la quadrícula" title="Terra" aria-label="Terra">' + nvSvg('<path d="M2 15l7-5h12l-7 5z"/><path d="M6 12.2h12M5 13.6h12" stroke-width="0.9"/>', 24, 1.3) + '</button>' + bg('sky', 'Cel', 'linear-gradient(#7FB0E8,#F2F5F8)') + bg('white', 'Blanc', '#f2f4f1') + bg('grey', 'Gris fosc', '#23272E') + bg('black', 'Negre', '#0a0c0b') + '</div>';
   p.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; e.stopPropagation(); const f = NV_ACT[b.dataset.a]; if (f) f(); syncNav(); };
   p.onmouseover = e => { const b = e.target.closest('[data-h]'), h = $('nvHint'); if (h) h.textContent = b ? b.dataset.h : ''; };
   p.onmouseleave = () => { const h = $('nvHint'); if (h) h.textContent = ''; };
@@ -407,7 +408,7 @@ function nvOn(a) {
   if (['N', 'S', 'E', 'O', 'PL'].includes(a)) return same(NAV_VIEWS[a]);
   if (NV_AX[a]) return CAM.proj === 'axo' && same(axoDir(a));
   if (['conic', 'axo', 'cav', 'mil'].includes(a)) return CAM.proj === a;
-  return a === 'wire' ? !!S.style.wire : a === 'xray' ? !!S.style.xray : a === 'edges' ? !!S.style.edges : a === 'cifc' ? S.style.colorBy === 'ifc' : a === 'sec' ? !!S.clipBox.on : ['sky', 'white', 'grey', 'black'].includes(a) ? S.bg === a : false;
+  return a === 'wire' ? !!S.style.wire : a === 'xray' ? !!S.style.xray : a === 'edges' ? !!S.style.edges : a === 'cifc' ? S.style.colorBy === 'ifc' : a === 'sec' ? !!S.clipBox.on : a === 'ground' ? !!S.show.ground : ['sky', 'white', 'grey', 'black'].includes(a) ? S.bg === a : false;
 }
 function syncNav() {
   const PN = { conic: 'Cònica', axo: 'Axonomètrica', cav: 'Cavallera', mil: 'Militar' };
@@ -495,8 +496,8 @@ window.addEventListener('keydown', ev => {
 });
 /* vista de planta (Revit): el rang pertany a la vista, que té un nivell associat; el nivell només aporta l'elevació */
 function pvOf(l) { return (S.model.planViews || []).find(p => p.lvl === l.id) || null; }
-function pvSet(l, v) { S.model.planViews = S.model.planViews || []; let p = pvOf(l); if (!p) { p = { lvl: l.id }; S.model.planViews.push(p); } Object.assign(p, v); delete l.vr; }
-function vrOf(l) { const p = pvOf(l) || (l && l.vr) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(p.cut) != null ? p.cut : 1.2, bot: n(p.bot) != null ? p.bot : 0, depth: n(p.depth) != null ? p.depth : 0.1 }; }
+function pvSet(l, v) { S.model.planViews = S.model.planViews || []; let p = pvOf(l); if (!p) { p = { lvl: l.id }; S.model.planViews.push(p); } Object.assign(p, v); }
+function vrOf(l) { const p = pvOf(l) || {}, n = x => (typeof x === 'number' && isFinite(x) ? x : null); return { cut: n(p.cut) != null ? p.cut : 1.2, bot: n(p.bot) != null ? p.bot : 0, depth: n(p.depth) != null ? p.depth : 0.1, rear: n(p.rear) != null ? p.rear : 0 }; }
 function vrFar(l) { const v = vrOf(l); return Math.max(0.01, v.cut - v.bot + v.depth); }
 function levelSetElev(l, v) {
   const dz = v - l.elev; l.elev = v;
@@ -518,17 +519,35 @@ function annGripDefs(t) {
 function annEditDlg(kind, o) {
   const F = (id, lab, val) => '<span>' + lab + '</span><input type="text" id="' + id + '" value="' + esc(String(val)) + '">';
   let h = '<h3>' + (kind === 'lvls' ? 'Nivell' : 'Eix de pilars') + '</h3><div class="kv">';
-  if (kind === 'lvls') { const v = vrOf(o); h += F('aeN', 'Nom', o.name) + F('aeZ', 'Elevació (m)', fmt(o.elev, 3)) + '</div><h3 style="margin-top:10px">Rang de vista de la planta</h3><div class="kv">' + F('aeC', 'Pla de tall (m sobre el nivell)', fmt(v.cut, 3)) + F('aeB', 'Fons del rang principal (m)', fmt(v.bot, 3)) + F('aeD', 'Profunditat de vista (m sota el fons)', fmt(v.depth, 3)); }
+  if (kind === 'lvls') { const v = vrOf(o); h += F('aeN', 'Nom', o.name) + F('aeZ', 'Elevació (m)', fmt(o.elev, 3)) + '</div><h3 style="margin-top:10px">Rang de vista de la planta</h3><div class="kv">' + F('aeC', 'Pla de tall (m sobre el nivell)', fmt(v.cut, 3)) + F('aeB', 'Fons del rang principal (m)', fmt(v.bot, 3)) + F('aeD', 'Profunditat de vista (m sota el fons)', fmt(v.depth, 3)) + F('aeRe', 'Darrere l’observador, reflexades (m; 0 = no)', fmt(v.rear, 3)); }
   else h += F('aeN', 'Nom', o.name) + F('aeAx', 'Inici X (m)', fmt(o.a[0], 3)) + F('aeAy', 'Inici Y (m)', fmt(o.a[1], 3)) + F('aeBx', 'Final X (m)', fmt(o.b[0], 3)) + F('aeBy', 'Final Y (m)', fmt(o.b[1], 3));
   h += '</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">' + (kind === 'lvls' ? '<button class="btn" id="aeR">Valors per defecte</button>' : '') + '<button class="btn" id="aeX">Cancel·la</button><button class="btn acc" id="aeOk">Aplica</button></div>';
   $('dlgBox').innerHTML = h; $('dlg').classList.add('show'); const q = id => $('dlgBox').querySelector('#' + id), close = () => $('dlg').classList.remove('show');
   q('aeX').onclick = close;
-  if (kind === 'lvls') q('aeR').onclick = () => { q('aeC').value = '1.2'; q('aeB').value = '0'; q('aeD').value = '0.1'; };
+  if (kind === 'lvls') q('aeR').onclick = () => { q('aeC').value = '1.2'; q('aeB').value = '0'; q('aeD').value = '0.1'; q('aeRe').value = '0'; };
   q('aeOk').onclick = () => {
-    if (kind === 'lvls') { const z = parseNum(q('aeZ').value), c = parseNum(q('aeC').value), b = parseNum(q('aeB').value), d = parseNum(q('aeD').value); if (z == null || c == null || b == null || d == null || d < 0 || c <= b) { toast('Valors no vàlids: el pla de tall ha de ser sobre el fons i la profunditat ≥ 0.'); return; }
-      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); pvSet(o, { cut: c, bot: b, depth: d }); }
+    if (kind === 'lvls') { const z = parseNum(q('aeZ').value), c = parseNum(q('aeC').value), b = parseNum(q('aeB').value), d = parseNum(q('aeD').value), rr = parseNum(q('aeRe').value); if (z == null || c == null || b == null || d == null || rr == null || rr < 0 || d < 0 || c <= b) { toast('Valors no vàlids: el pla de tall ha de ser sobre el fons i la profunditat ≥ 0.'); return; }
+      pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); levelSetElev(o, z); pvSet(o, { cut: c, bot: b, depth: d, rear: rr }); }
     else { const v = ['aeAx', 'aeAy', 'aeBx', 'aeBy'].map(i => parseNum(q(i).value)); if (v.some(x => x == null) || (v[0] === v[2] && v[1] === v[3])) { toast('Coordenades no vàlides.'); return; }
       pushUndo(); if (q('aeN').value.trim()) o.name = q('aeN').value.trim(); o.a = [v[0], v[1]]; o.b = [v[2], v[3]]; }
     close(); refreshAll();
   };
+}
+
+/* ---------- directrius del projecte · Terra (v0.50) ---------- */
+function groundPanel(b) {
+  const c = groundCfg(), set = (k, v) => { pushUndo('Terra'); S.model.meta.ground = { ...groundCfg(), [k]: v }; refreshAll(); };
+  const hd = el('div', 'row hd gr-hd'); const tg = el('label', 'gr-sw'); tg.innerHTML = '<input type="checkbox" id="grOn"' + (S.show.ground ? ' checked' : '') + '><span>Visible</span>'; tg.querySelector('input').onchange = e => { S.show.ground = e.target.checked; refreshAll(); };
+  hd.appendChild(el('span', '', 'Terra')); hd.appendChild(tg); b.appendChild(hd);
+  const box = el('div', 'gr-box' + (S.show.ground ? '' : ' off')); b.appendChild(box);
+  const prev = el('div', 'gr-prev'); prev.style.setProperty('--gc', c.col); prev.style.setProperty('--go', c.op); prev.style.setProperty('--lc', c.gcol); prev.style.setProperty('--lo', c.grid ? c.gop : 0); prev.style.setProperty('--st', Math.max(4, Math.min(22, 14 * c.step)) + 'px'); prev.style.setProperty('--mj', c.major > 1 ? Math.max(4, Math.min(22, 14 * c.step)) * c.major + 'px' : '0px'); box.appendChild(prev);
+  const R = (lab, inp, unit) => { const r = el('div', 'gr-r'); r.appendChild(el('span', '', lab)); r.appendChild(inp); if (unit) r.appendChild(el('i', '', unit)); box.appendChild(r); return inp; };
+  const colr = (k) => { const i = el('input'); i.type = 'color'; i.value = c[k]; i.dataset.gr = k; i.onchange = () => set(k, i.value); return i; };
+  const rng = (k, mn, mx, st, pct) => { const w = el('span', 'gr-rng'), i = el('input'), o = el('output'); i.type = 'range'; i.min = mn; i.max = mx; i.step = st; i.value = c[k]; i.dataset.gr = k; const f = v => o.textContent = pct ? Math.round(v * 100) + ' %' : v; f(c[k]); i.oninput = () => f(+i.value); i.onchange = () => set(k, +i.value); w.appendChild(i); w.appendChild(o); return w; };
+  const nm = (k, mn, mx, st) => { const i = el('input'); i.type = 'number'; i.min = mn; i.max = mx; i.step = st; i.value = c[k]; i.dataset.gr = k; i.onchange = () => { const v = +i.value; if (isFinite(v) && v >= mn && v <= mx) set(k, v); else i.value = c[k]; }; return i; };
+  box.appendChild(el('div', 'gr-sub', 'Pla'));
+  R('Color', colr('col')); R('Opacitat', rng('op', 0, 1, 0.05, true)); R('Cota (m)', nm('z', -100, 100, 0.01));
+  const sub = el('div', 'gr-sub'); const ck = el('input'); ck.type = 'checkbox'; ck.checked = !!c.grid; ck.dataset.gr = 'grid'; ck.onchange = () => set('grid', ck.checked); sub.appendChild(ck); sub.appendChild(document.createTextNode(' Quadrícula')); box.appendChild(sub);
+  R('Pas', nm('step', 0.05, 100, 0.05), 'm'); R('Mestra cada', nm('major', 0, 50, 1), 'línies'); R('Extensió', nm('ext', 1, 2000, 1), 'm'); R('Color', colr('gcol')); R('Opacitat', rng('gop', 0, 1, 0.05, true));
+  const rs = el('button', 'btn sm', 'Valors per defecte'); rs.onclick = () => { pushUndo('Terra'); delete S.model.meta.ground; refreshAll(); }; box.appendChild(rs);
 }

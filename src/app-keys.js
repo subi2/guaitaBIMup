@@ -13,14 +13,14 @@ const CMDS = [
   ['freehand', 'Dibuix a mà', 'tool', 'freehand', 'FH'],
   ['wall', 'Mur', 'tool', 'wall', 'WA'], ['column', 'Pilar', 'tool', 'column', 'CL'], ['slab', 'Llosa', 'tool', 'slab', 'FL'],
   ['roof', 'Coberta', 'tool', 'roof', 'RF'], ['stair', 'Escala', 'tool', 'stair', 'ST'], ['opening', 'Obertura (porta/finestra)', 'tool', 'opening', 'DR'],
-  ['comp', 'Component', 'tool', 'comp', 'CM'], ['level', 'Nivell', 'tool', 'level', 'LL'], ['grid', 'Eix', 'tool', 'grid', 'GR'],
+  ['door', 'Porta (catàleg)', 'tool', 'door', 'PR'], ['win', 'Finestra (catàleg)', 'tool', 'win', 'FN'], ['comp', 'Component', 'tool', 'comp', 'CM'], ['level', 'Nivell', 'tool', 'level', 'LL'], ['grid', 'Eix', 'tool', 'grid', 'GR'],
   ['refplane', 'Pla de referència', 'tool', 'refplane', 'RP'], ['matf', 'Fonament de matriu', 'tool', 'matf', 'MF'], ['pad', 'Pad', 'tool', 'pad', 'PD'],
   ['strip', 'Sabata corrida', 'tool', 'strip', 'SB'], ['bsec', 'Línia de secció', 'tool', 'bsec', 'BS'],
   ['dim', 'Cota', 'tool', 'dim', 'DI'], ['tape', 'Mesura', 'tool', 'tape', 'MT'], ['protr', 'Transportador', 'tool', 'protr', 'AN'],
   ['text', 'Text', 'tool', 'text', 'TX'], ['section', 'Secció', 'tool', 'section', 'SC'],
   ['select', 'Selecció', 'tool', 'select', 'SL'], ['eraser', 'Esborrador', 'tool', 'eraser', 'ER'], ['paint', 'Pintura', 'tool', 'paint', 'PT'],
   ['orbit', 'Òrbita', 'tool', 'orbit', 'OR'], ['pan', 'Desplaça la vista', 'tool', 'pan', 'PN'], ['zoom', 'Zoom', 'tool', 'zoom', 'ZM'],
-  ['zoomwin', 'Zoom a finestra', 'tool', 'zoomwin', 'ZR'], ['fit', 'Ajusta la vista', 'act', () => fitView(), 'ZF'],
+  ['zoomwin', 'Zoom a finestra', 'tool', 'zoomwin', 'ZR'], ['campos', 'Posiciona càmera', 'tool', 'campos', 'PC'], ['camlook', 'Mira al voltant', 'tool', 'camlook', 'LA'], ['camorb', 'Òrbita de càmera', 'tool', 'camorb', 'OK'], ['fit', 'Ajusta la vista', 'act', () => fitView(), 'ZF'],
   ['ifc', 'Classificació IFC', 'tool', 'ifc', 'IF'], ['prev', 'Vista anterior', 'act', () => prevView(), 'VP'],
 ];
 const KEY_DEF = Object.fromEntries(CMDS.map(c => [c[0], c[4]]));

@@ -39,10 +39,10 @@ async function deliver(name, data, mime) {
 const baseName = () => S.fileName.replace(/\.gbup\.json$|\.g3ds\.json$|\.json$/i, '') || 'model';
 
 /* ---------- recollida de geometria segons l'àmbit ---------- */
-const hidG = g => !tagVisible(g.tag) || (g.ifc && S.hiddenIfc.has(g.ifc));
+const hidG = g => !tagVisible(g.tag) || (g.ifc && S.hiddenIfc.has(g.ifc)) || (S.pubOnly && S.model.root.groups.has(g.id) && !S.pubOnly.has(g.id));
 function flatInto(c, off, acc) {
   for (const f of c.faces.values()) { if (!tagVisible(f.tag)) continue; acc.faces.push({ o: f.loop.map(id => V.add(K.P(c, id), off)), h: f.holes.map(h => h.map(id => V.add(K.P(c, id), off))), n: f.n.slice(), mat: f.mat }); }
-  for (const e of c.edges.values()) acc.edges.push([V.add(K.P(c, e.a), off), V.add(K.P(c, e.b), off)]);
+  { const sf = softEdges(c); for (const e of c.edges.values()) if (!sf.has(e.id)) acc.edges.push([V.add(K.P(c, e.a), off), V.add(K.P(c, e.b), off)]); }
   for (const g of c.groups.values()) { if (!tagVisible(g.tag)) continue; flatInto(g, V.add(off, g.t), acc); }
 }
 function collectScene() {
@@ -50,11 +50,11 @@ function collectScene() {
   (function walk(c, off, name, level, tag) {
     const acc = { faces: [], edges: [] };
     for (const f of c.faces.values()) { if (!tagVisible(f.tag)) continue; acc.faces.push({ o: f.loop.map(id => V.add(K.P(c, id), off)), h: f.holes.map(h => h.map(id => V.add(K.P(c, id), off))), n: f.n.slice(), mat: f.mat }); }
-    for (const e of c.edges.values()) acc.edges.push([V.add(K.P(c, e.a), off), V.add(K.P(c, e.b), off)]);
+    { const sf = softEdges(c); for (const e of c.edges.values()) if (!sf.has(e.id)) acc.edges.push([V.add(K.P(c, e.a), off), V.add(K.P(c, e.b), off)]); }
     if (acc.faces.length || acc.edges.length) els.push({ kind: 'sketch', name, ifc: null, level, tag, id: c.id, faces: acc.faces, edges: acc.edges });
     for (const g of c.groups.values()) {
       if (hidG(g)) continue; const go = V.add(off, g.t);
-      if (g.ifc) { const a2 = { faces: [], edges: [] }; flatInto(g, go, a2); els.push({ kind: 'bim', name: g.name || ('Grup ' + g.id), ifc: g.ifc, level: g.level, tag: g.tag, id: g.id, faces: a2.faces, edges: a2.edges }); }
+      if (g.ifc) { const a2 = { faces: [], edges: [] }; flatInto(g, go, a2); els.push({ kind: 'bim', name: g.name || ('Grup ' + g.id), ifc: g.ifc, level: g.level, tag: g.tag, id: g.id, ps: g.psets || null, faces: a2.faces, edges: a2.edges }); }
       else walk(g, go, g.name || ('Grup ' + g.id), g.level, g.tag);
     }
   })(S.model.root, [0, 0, 0], 'Esbós', null, 0);
@@ -146,6 +146,7 @@ function buildIFC(els, opt) {
   const uL = E('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)'), uA = E('IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)'), uV = E('IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)'), uR = E('IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)');
   const units = E('IFCUNITASSIGNMENT((' + [uL, uA, uV, uR].join(',') + '))');
   const proj = E('IFCPROJECT(' + G('project') + ',' + oh + ',' + stepStr(baseName()) + ',$,$,$,$,(' + ctx + '),' + units + ')');
+  { const pp = typeof gProjPset === 'function' ? gProjPset() : null; if (pp) for (const [pn, pv] of Object.entries(pp)) { const pr = Object.entries(pv).map(([k, v]) => E('IFCPROPERTYSINGLEVALUE(' + stepStr(k) + ',$,IFCLABEL(' + stepStr(String(v)) + '),$)')); if (pr.length) { const cp = E('IFCPROPERTYSET(' + G('pj' + pn) + ',' + oh + ',' + stepStr(pn) + ',$,(' + pr.join(',') + '))'); E('IFCRELDEFINESBYPROPERTIES(' + G('pjr' + pn) + ',' + oh + ',$,$,(' + proj + '),' + cp + ')'); } } }
   const lp = (rel, p) => E('IFCLOCALPLACEMENT(' + (rel || '$') + ',' + (p || wcs) + ')');
   const siteP = lp(null), site = E('IFCSITE(' + G('site') + ',' + oh + ",'Emplaçament',$,$," + siteP + ',$,$,.ELEMENT.,$,$,$,$,$)'.replace("'Emplaçament'", stepStr('Emplaçament')));
   const bldP = lp(siteP), bld = E('IFCBUILDING(' + G('building') + ',' + oh + ',' + stepStr(baseName()) + ',$,$,' + bldP + ',$,$,.ELEMENT.,$,$,$)');
@@ -189,6 +190,7 @@ function buildIFC(els, opt) {
     }
     const props = [E('IFCPROPERTYSINGLEVALUE(' + stepStr('Nivell') + ',$,IFCLABEL(' + stepStr(lv ? lv.name : '') + '),$)'), E('IFCPROPERTYSINGLEVALUE(' + stepStr('Etiqueta') + ',$,IFCLABEL(' + stepStr(tagName(el.tag)) + '),$)'), E('IFCPROPERTYSINGLEVALUE(' + stepStr('Origen') + ',$,IFCLABEL(' + stepStr(el.kind === 'bim' ? 'BIM (classificat)' : 'Esbós') + '),$)')];
     const ps = E('IFCPROPERTYSET(' + G('ps' + count) + ',' + oh + ',' + stepStr('Pset_guaitaBIMup') + ',$,(' + props.join(',') + '))'); E('IFCRELDEFINESBYPROPERTIES(' + G('rd' + count) + ',' + oh + ',$,$,(' + id + '),' + ps + ')');
+    if (el.ps) for (const [pn, pv] of Object.entries(el.ps)) { const ks = Object.keys(pv || {}).filter(k => pv[k] !== '' && pv[k] != null); if (!ks.length) continue; const pr = ks.map(k => { const v = pv[k]; const val = typeof v === 'number' ? 'IFCREAL(' + (Number.isInteger(v) ? v + '.' : v) + ')' : typeof v === 'boolean' ? 'IFCBOOLEAN(.' + (v ? 'T' : 'F') + '.)' : 'IFCLABEL(' + stepStr(String(v)) + ')'; return E('IFCPROPERTYSINGLEVALUE(' + stepStr(k) + ',$,' + val + ',$)'); }); const cp = E('IFCPROPERTYSET(' + G('cp' + count + pn) + ',' + oh + ',' + stepStr(pn) + ',$,(' + pr.join(',') + '))'); E('IFCRELDEFINESBYPROPERTIES(' + G('cr' + count + pn) + ',' + oh + ',$,$,(' + id + '),' + cp + ')'); }
     idOf.set(el.id, id);
     if (el.voids && idOf.has(el.voids)) E('IFCRELVOIDSELEMENT(' + G('rv' + el.id) + ',' + oh + ',$,$,' + idOf.get(el.voids) + ',' + id + ')');
     if (el.fills) E('IFCRELFILLSELEMENT(' + G('rfl' + el.id) + ',' + oh + ',$,$,' + idOf.get(el.fills) + ',' + id + ')');
@@ -346,13 +348,14 @@ function buildSVG(opt) {
   }
   polys.sort((a, b) => b.z - a.z);
   const bg = opt.bg === 'none' ? '' : `<rect width="${W}" height="${Hh}" fill="${opt.bg === 'white' ? '#ffffff' : '#23272E'}"/>`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}">\n${bg}\n<g fill-rule="evenodd" stroke="none">${polys.map(p => `<path d="${p.d}" fill="${p.col}"/>`).join('')}</g>\n<g stroke="${opt.bg === 'dark' ? '#E7EAEE' : '#1B1D21'}" stroke-width="0.8" stroke-linecap="round">${lines.join('')}</g>\n</svg>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}">\n${bg}\n<g fill-rule="evenodd" stroke="none">${polys.map(p => `<path d="${p.d}" fill="${p.col}"/>`).join('')}</g>\n<g stroke="${opt.bg === 'dark' ? '#E7EAEE' : '#1B1D21'}" stroke-width="0.8" stroke-linecap="round">${lines.join('')}</g>\n${opt.vp ? '<g id=\"fugues\">' + vpSvg(vpGeom()) + '</g>\n' : ''}</svg>\n`;
 }
 function buildPNG(opt) {
   return new Promise(res => {
     renderer.render(scene, cam); const W = canvas.width, Hh = canvas.height, c2 = document.createElement('canvas'); c2.width = W; c2.height = Hh; const g = c2.getContext('2d');
     if (opt.bg === 'white') { g.fillStyle = '#fff'; g.fillRect(0, 0, W, Hh); } else if (opt.bg === 'dark') { g.fillStyle = '#23272E'; g.fillRect(0, 0, W, Hh); } else if (opt.bg === 'sky') { const gr = g.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, '#7FB0E8'); gr.addColorStop(0.55, '#F2F5F8'); g.fillStyle = gr; g.fillRect(0, 0, W, Hh); }
-    g.drawImage(canvas, 0, 0); c2.toBlob(b => res(b), 'image/png');
+    g.drawImage(canvas, 0, 0); const fin = () => c2.toBlob(b => res(b), 'image/png');
+    if (opt.vp && typeof vpCanvas === 'function') Promise.resolve(vpCanvas(g, W / (view.clientWidth || W))).then(fin); else fin();
   });
 }
 
@@ -375,6 +378,7 @@ function exportDlg(fmt) {
   if (fmt === 'skp') h += '<span>Format</span><span class="dim" style="font-size:12px">SKP v17 (SketchUp 2013–2020; versions posteriors també l’obren). Experimental: no verificat amb SketchUp real.</span>';
   if (fmt === 'stl') h += '<span>Unitats</span>' + sel('xUnit', [['1000', 'Mil·límetres (impressió 3D)'], ['1', 'Metres']]);
   if (fmt === 'svg') h += '<span>Fons</span>' + sel('xBg', [['white', 'Blanc'], ['none', 'Transparent'], ['dark', 'Gris fosc']]) + '<span>Arestes</span><label><input type="checkbox" id="xEdg" checked> Dibuixa les arestes</label>';
+  if ((fmt === 'svg' || fmt === 'png') && typeof vpGeom === 'function' && vpGeom().length) h += '<span>Fugues</span><label><input type="checkbox" id="xVp" checked> Inclou les línies de fuga</label>';
   if (fmt === 'png') h += '<span>Fons</span>' + sel('xBg', [['sky', 'Cel (com al visor)'], ['white', 'Blanc'], ['none', 'Transparent'], ['dark', 'Gris fosc']]);
   h += '</div><div id="xNotes" class="dim" style="font-size:12px;margin-bottom:10px"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="xX">Cancel·la</button><button class="btn" id="xCopy">Copia</button><button class="btn acc" id="xGo">Exporta</button></div>';
   $('dlgBox').innerHTML = h; $('dlg').classList.add('show');
@@ -392,8 +396,8 @@ function exportDlg(fmt) {
       else if (fmt === 'skp') { const r = buildSKP(els, {}); data = r.bytes; fname = name + '.skp'; mime = 'application/octet-stream'; notes = r.notes.slice(); const v = r.ver; notes.unshift('Escrit: ' + r.groups + ' grups, ' + r.faces + ' cares, ' + r.layers + ' capes, ' + r.materials + ' materials.' + (v && !v.err ? ' Rellegit amb OpenSKP: ' + v.tri + ' triangles, àrea ' + fmtN(v.area, 2) + ' m² (model ' + fmtN(v.ref, 2) + ' m²) ' + (v.ok ? '✔' : '✘ NO coincideix') : ' Verificació no disponible: ' + (v && v.err))); }
       else if (fmt === 'glb') { const r = buildGLB(els); data = r.glb; fname = name + '.glb'; mime = 'model/gltf-binary'; }
       else if (fmt === 'stl') { const r = buildSTL(els, +g('xUnit').value); data = r.buf; fname = name + '.stl'; mime = 'model/stl'; }
-      else if (fmt === 'svg') { data = buildSVG({ scope, bg: g('xBg').value, edges: g('xEdg').checked }); fname = name + '.svg'; mime = 'image/svg+xml'; }
-      else if (fmt === 'png') { data = await buildPNG({ bg: g('xBg').value }); fname = name + '.png'; mime = 'image/png'; }
+      else if (fmt === 'svg') { data = buildSVG({ scope, bg: g('xBg').value, edges: g('xEdg').checked, vp: !!(g('xVp') && g('xVp').checked) }); fname = name + '.svg'; mime = 'image/svg+xml'; }
+      else if (fmt === 'png') { data = await buildPNG({ bg: g('xBg').value, vp: !!(g('xVp') && g('xVp').checked) }); fname = name + '.png'; mime = 'image/png'; }
     } catch (e) { g('xNotes').textContent = 'Error en generar el fitxer: ' + e.message; console.error(e); return; }
     if (copy) { try { await navigator.clipboard.writeText(data); toast('Contingut copiat (' + Math.round(data.length / 1024) + ' kB).'); } catch (e) { toast('No s’ha pogut copiar.'); } return; }
     const ok = await deliver(fname, data, mime); if (ok) { $('dlg').classList.remove('show'); if (notes.length) setTimeout(() => dlg('<h3>Avisos de l’exportació</h3><p>' + notes.slice(0, 12).map(esc).join('<br>') + (notes.length > 12 ? '<br>… i ' + (notes.length - 12) + ' més.' : '') + '</p>'), 200); }

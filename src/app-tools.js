@@ -1,5 +1,5 @@
 /* ============================================================
-   guaitaBIMup 10 — eines, ordres, navegació i cub d'orientació
+   guaitaBIMup 10 — eines, ordres, navegació i caseta de vistes
    ============================================================ */
 let T = null, LOCK = null, lastMouse = { mx: 0, my: 0 };
 const st = {};
@@ -12,7 +12,7 @@ function parseNum(s) {
 }
 function refreshAll() { regenPar(); rebuild(); renderTray(); syncUI(); }
 function refreshSel() { rebuildSel(); renderInfo(); syncUI(); }
-function setTool(name) { if (!TOOLS[name]) return; cancelTool(); S.tool = name; T = TOOLS[name]; syncUI(); }
+function setTool(name) { if (!TOOLS[name]) return; cancelTool(); S.tool = name; T = TOOLS[name]; if (T.onSet) T.onSet(); syncUI(); }
 function cancelTool() { for (const k of Object.keys(st)) delete st[k]; LOCK = null; clearPrev(); setHover(null); gSel.position.set(0, 0, 0); $('vcb').value = ''; $('tip').style.display = 'none'; $('selBox').style.display = 'none'; needRender = true; }
 
 /* entitat sota el cursor, relativa al context d'edició */
@@ -393,7 +393,7 @@ function navMove(mode, dx, dy) {
     camAnim = null; CAM.theta -= dx * OPT.orbit;
     if (CAM.proj === 'conic' || CAM.proj === 'axo') CAM.phi = Math.max(0.001, Math.min(Math.PI - 0.001, CAM.phi - dy * OPT.orbit * (OPT.orbitInvY ? -1 : 1)));
   } else if (mode === 'pan') {
-    camAnim = null; const h = view.clientHeight || 1, s = 2 * CAM.dist * Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2)) / h, e = cam.matrixWorld.elements;
+    camAnim = null; const h = view.clientHeight || 1, s = 2 * CAM.dist * Math.tan(THREE.MathUtils.degToRad(camVfov() / 2)) / h, e = cam.matrixWorld.elements;
     CAM.target.x += (-e[0] * dx + e[4] * dy) * s; CAM.target.y += (-e[1] * dx + e[5] * dy) * s; CAM.target.z += (-e[2] * dx + e[6] * dy) * s;
   } else if (mode === 'zoom') { camAnim = null; CAM.dist = Math.max(0.2, Math.min(4000, CAM.dist * Math.exp(dy * 0.01))); }
   updCam();
@@ -425,9 +425,9 @@ function zoomAt(mx, my, f) {
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 canvas.addEventListener('pointerleave', () => { $('tip').style.display = 'none'; snapDot(null); });
 
-/* ---------- cub d'orientació (llenç 2D) ---------- */
+/* ---------- caseta de vistes / Views House (llenç 2D) ---------- */
 const CUBE = { hover: null, drag: null };
-/* caseta d'orientació: parets, teulada i eixos (positiu continu, negatiu discontinu) */
+/* caseta de vistes: parets, teulada i eixos (positiu continu, negatiu discontinu) */
 function cubeBasis() {
   const th = CAM.proj === 'cav' ? Math.round(CAM.theta / (Math.PI / 2)) * Math.PI / 2 : CAM.theta, ph = CAM.proj === 'mil' ? 0.5 : CAM.proj === 'cav' ? 1.25 : Math.max(0.05, Math.min(Math.PI - 0.05, CAM.phi));
   return { r: [-Math.sin(th), Math.cos(th), 0], u: [-Math.cos(ph) * Math.cos(th), -Math.cos(ph) * Math.sin(th), Math.sin(ph)], f: [Math.sin(ph) * Math.cos(th), Math.sin(ph) * Math.sin(th), Math.cos(ph)] };
@@ -447,6 +447,9 @@ const HF = [ /* cares de la caseta: vèrtexs, normal, vista a la qual porta el c
 /* cantonades del cub imaginari que envolta la casa: punts calents invisibles cap a axonometries trimètriques */
 const TRI = [0.45, 0.72, 0.53];
 const HCORN = []; for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) HCORN.push({ p: [sx * HW, sy * HD, sz > 0 ? HR : HB], d: [sx * TRI[0], sy * TRI[1], sz * TRI[2]], t: 'Axonometria trimètrica' });
+/* arestes clicables: verticals → alçat a 45°, carener → planta (mateix destí que les vessants) */
+const HEDG = []; for (const sx of [-1, 1]) for (const sy of [-1, 1]) HEDG.push({ a: [sx * HW, sy * HD, HB], b: [sx * HW, sy * HD, HE], fs: [sy < 0 ? 0 : 1, sx > 0 ? 2 : 3], d: [sx, sy, 0], t: 'Alçat a 45° (' + (sy < 0 ? 'S' : 'N') + (sx < 0 ? 'O' : 'E') + ')' });
+HEDG.push({ a: [0, -HD, HR], b: [0, HD, HR], fs: [4, 5], d: [0, 0, 1], t: 'Planta' });
 const HO = [-HW, -HD, HB]; /* origen dels eixos: cantonada davantera esquerra, a la base */
 const HAX = [{ d: [1, 0, 0], p: 2 * HW + 0.85, n: 0.85, i: 2 * HW, k: 0, t: 'X' }, { d: [0, 1, 0], p: 2 * HD + 1.15, n: 0.85, i: 2 * HD, k: 1, t: 'Y' }, { d: [0, 0, 1], p: HR - HB + 0.65, n: 0.85, i: HE - HB, k: 2, t: 'Z' }];
 function cubeAxes(g, b, front) {
@@ -488,6 +491,7 @@ function drawCube() {
     g.strokeStyle = '#1B1D21'; g.lineWidth = 1; g.lineJoin = 'round'; g.stroke();
     if (f.door) { const dp = f.door.map(p => cubeProj(p, b)); g.beginPath(); dp.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fillStyle = '#5b4a38'; g.fill(); g.lineWidth = 0.8; g.stroke(); const kn = cubeProj([0.12, -HD, HB + 0.36], b); g.fillStyle = '#d9c9a8'; g.beginPath(); g.arc(kn[0], kn[1], 0.9, 0, Math.PI * 2); g.fill(); }
   }
+  if (CUBE.hover && CUBE.hover.e) { const p = cubeProj(CUBE.hover.e.a, b), q = cubeProj(CUBE.hover.e.b, b); g.strokeStyle = 'rgba(198,255,26,.95)'; g.lineWidth = 3.2; g.lineCap = 'round'; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); g.stroke(); g.lineWidth = 1; }
   if (CUBE.hover && CUBE.hover.c) { const q = cubeProj(CUBE.hover.c.p, b); g.fillStyle = 'rgba(198,255,26,.85)'; g.strokeStyle = '#1B1D21'; g.lineWidth = 1; g.beginPath(); g.arc(q[0], q[1], 4.5, 0, Math.PI * 2); g.fill(); g.stroke(); }
   cubeAxes(g, b, true);
 }
@@ -497,9 +501,18 @@ function cubeRegion(ev) {
   const C0 = [0, 0, (HB + HR) / 2]; let best = null, bd = 49;
   for (const c of HCORN) { if (V.dot(V.sub(c.p, C0), b.f) <= 0) continue; const q = cubeProj(c.p, b), dd = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (dd < bd) { bd = dd; best = c; } }
   if (best) return { c: best, dir: best.d, tri: true, t: best.t };
-  const vis = houseFaces(b).reverse();
+  const visF = houseFaces(b); let be = null, bed = 20;
+  for (const e of HEDG) { if (!e.fs.some(i => visF.includes(HF[i]))) continue; const p = cubeProj(e.a, b), q = cubeProj(e.b, b), vx = q[0] - p[0], vy = q[1] - p[1], L2 = vx * vx + vy * vy || 1, t = Math.max(0.12, Math.min(0.88, ((x - p[0]) * vx + (y - p[1]) * vy) / L2)), dd = (p[0] + t * vx - x) ** 2 + (p[1] + t * vy - y) ** 2; if (dd < bed) { bed = dd; be = e; } }
+  if (be) return { e: be, dir: be.d, t: be.t };
+  const vis = visF.slice().reverse();
   for (const f of vis) if (inside(f.v.map(p => cubeProj(p, b)))) return { f, dir: f.d };
   return null;
+}
+/* des de la caseta: la militar i la cavallera giren (només θ), la cònica conserva la perspectiva */
+function goDirKeep(d) {
+  const hz = Math.abs(d[0]) + Math.abs(d[1]) > 1e-6;
+  if (CAM.proj === 'mil' || CAM.proj === 'cav') { if (!hz) { if (d[2] < 0) return goDir(d); return; } animateCam({ theta: Math.atan2(d[1], d[0]) }); syncUI(); return; }
+  if (CAM.proj !== 'conic') CAM.proj = 'axo'; const l = V.len(d); animateCam({ theta: hz ? Math.atan2(d[1], d[0]) : -Math.PI / 2, phi: Math.max(0.0005, Math.min(Math.PI - 0.0005, Math.acos(d[2] / l))) }); syncUI();
 }
 function goDir(d) { const l = V.len(d); if (CAM.proj === 'mil' || CAM.proj === 'cav') CAM.proj = 'axo'; animateCam({ theta: Math.abs(d[0]) + Math.abs(d[1]) < 1e-6 ? -Math.PI / 2 : Math.atan2(d[1], d[0]), phi: Math.max(0.0005, Math.min(Math.PI - 0.0005, Math.acos(d[2] / l))) }); syncUI(); }
 (function initCube() {
@@ -507,9 +520,9 @@ function goDir(d) { const l = V.len(d); if (CAM.proj === 'mil' || CAM.proj === '
   cv.addEventListener('pointerdown', ev => { ev.stopPropagation(); cv.setPointerCapture(ev.pointerId); CUBE.drag = { x: ev.clientX, y: ev.clientY, moved: 0 }; });
   cv.addEventListener('pointermove', ev => {
     if (CUBE.drag) { const dx = ev.clientX - CUBE.drag.x, dy = ev.clientY - CUBE.drag.y; CUBE.drag.x = ev.clientX; CUBE.drag.y = ev.clientY; CUBE.drag.moved += Math.abs(dx) + Math.abs(dy); if (CUBE.drag.moved > 3) { CUBE.hover = null; navMove('orbit', dx * 1.6, dy * 1.6); } return; }
-    CUBE.hover = cubeRegion(ev); cv.style.cursor = CUBE.hover ? 'pointer' : 'grab'; cv.title = CUBE.hover ? (CUBE.hover.tri ? CUBE.hover.t : 'Vista ' + CUBE.hover.f.t.toLowerCase()) : 'Arrossega per girar'; needRender = true;
+    CUBE.hover = cubeRegion(ev); cv.style.cursor = CUBE.hover ? 'pointer' : 'grab'; cv.title = CUBE.hover ? (CUBE.hover.tri || CUBE.hover.e ? CUBE.hover.t : 'Vista ' + CUBE.hover.f.t.toLowerCase()) : 'Caseta de vistes · arrossega per girar'; needRender = true;
   });
-  cv.addEventListener('pointerup', ev => { const d = CUBE.drag; CUBE.drag = null; if (d && d.moved <= 3) { const r = cubeRegion(ev); if (r) { if (r.tri) CAM.proj = 'axo'; goDir(r.dir); } } });
+  cv.addEventListener('pointerup', ev => { const d = CUBE.drag; CUBE.drag = null; if (d && d.moved <= 3) { const r = cubeRegion(ev); if (r) goDirKeep(r.dir); } });
   cv.addEventListener('pointerleave', () => { if (!CUBE.drag) { CUBE.hover = null; needRender = true; } });
   const turn = (dth, dph) => { const s = camState(), to = { theta: s.theta + dth }; if (dph) to.phi = Math.min(Math.PI - 0.05, Math.max(0.05, s.phi + dph)); animateCam(to); };
   $('vcU').onclick = () => turn(0, -Math.PI / 2); $('vcD').onclick = () => turn(0, Math.PI / 2); $('vcL').onclick = () => turn(-Math.PI / 2); $('vcR').onclick = () => turn(Math.PI / 2);
@@ -530,8 +543,8 @@ function openView(key, quiet) {
   const [t, id] = key.split(':'); if (viewName(key) == null) return;
   S.view = key; if (!S.tabs.includes(key)) S.tabs.push(key);
   S.planGhost = null; const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
-  if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj }); if (v.style) useStyle(v.style, true); }
-  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; const pv = vrOf(l); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + pv.cut)); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + pv.bot))); if (pv.depth > 0) S.planGhost = { lvl: l.id, elev: l.elev, bot: pv.bot, depth: pv.depth }; animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
+  if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); sceneRestore(v, clips); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj, lens: v.cam.lens }); if (v.style) useStyle(v.style, true); }
+  else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; const pv = vrOf(l); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + pv.cut)); { const fl = new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + pv.bot - 0.001)); fl.floor = true; clips.push(fl); } if (pv.depth > 0) S.planGhost = { lvl: l.id, elev: l.elev, bot: pv.bot, depth: pv.depth }; animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
   else if (t === 'elev') { const e = ELEVS.find(x => x[0] === id); animateCam({ proj: 'axo', theta: e[2], phi: Math.PI / 2, t: cx, dist: fitD }); }
   else if (t === 'bsec') { const v = bsecOf(id); if (v) { const bc = bsecClips(v); clips.push(...bc.clips); animateCam({ proj: 'axo', theta: bc.theta, phi: Math.PI / 2, t: [cx[0], cx[1], cx[2]], dist: fitD }); } }
   else if (t === 'sec') { const g = S.model.grids.find(x => String(x.id) === id), d = V.norm([g.b[0] - g.a[0], g.b[1] - g.a[1], 0]), n = [d[1], -d[0], 0]; clips.push(new THREE.Plane(new THREE.Vector3(-n[0], -n[1], 0), n[0] * g.a[0] + n[1] * g.a[1] + 0.001)); animateCam({ proj: 'axo', theta: Math.atan2(n[1], n[0]), phi: Math.PI / 2, t: cx, dist: fitD }); }
@@ -539,7 +552,20 @@ function openView(key, quiet) {
   if (!quiet) refreshAll(); else { renderTray(); syncUI(); }
 }
 function closeTab(key) { S.tabs = S.tabs.filter(k => k !== key); if (S.view === key) { if (S.tabs.length) openView(S.tabs[S.tabs.length - 1]); else { S.view = null; S.viewClips = []; applyClips(); refreshAll(); } } else syncUI(); }
+/* v0.43.1 · estat d'una escena: càmera, estil, vista de tall de base (planta/secció/alçat), etiquetes i classes IFC visibles, nivell */
+function sceneState() {
+  const base = S.view && !S.view.startsWith('scene:') ? S.view : (S.model.views.find(x => 'scene:' + x.id === S.view) || {}).vk || null;
+  return { cam: camState(), style: styleSnapshot(), vk: base, hidTags: S.model.tags.filter(t => !t.visible).map(t => t.id), hidIfc: [...S.hiddenIfc], lv: S.level };
+}
+function sceneRestore(v, clips) {
+  if (v.vk && viewName(v.vk) != null) { const tabs = S.tabs.slice(); openView(v.vk, true); clips.push(...S.viewClips); S.tabs = tabs; S.view = 'scene:' + v.id; } 
+  if (Array.isArray(v.hidTags)) for (const t of S.model.tags) t.visible = !v.hidTags.includes(t.id);
+  if (Array.isArray(v.hidIfc)) S.hiddenIfc = new Set(v.hidIfc);
+  if (v.lv != null && S.model.levels.some(l => l.id === v.lv)) S.level = v.lv;
+}
 function saveScene() {
   pushUndo(); let n = S.model.views.length + 1; while (S.model.views.some(v => v.name === 'Escena ' + n)) n++;
-  const v = { id: S.model.nid++, name: 'Escena ' + n, cam: camState(), style: styleSnapshot() }; S.model.views.push(v); S.view = 'scene:' + v.id; S.tabs.push(S.view); S.viewClips = []; applyClips(); refreshAll(); toast(v.name + ' desada amb la càmera i la projecció actuals.');
+  const v = { id: S.model.nid++, name: 'Escena ' + n, ...sceneState() }; S.model.views.push(v); S.view = 'scene:' + v.id; S.tabs.push(S.view); refreshAll(); toast(v.name + ' desada: càmera, estil, vista de tall i visibilitat actuals.');
+  return v;
 }
+function updateScene(v) { pushUndo(); Object.assign(v, sceneState()); toast(v.name + ' actualitzada amb la vista actual.'); renderTray(); }
