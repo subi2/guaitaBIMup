@@ -1,5 +1,5 @@
 /* guaitaBIMup — service worker. Estratègia: xarxa primer, memòria cau com a reserva. */
-const CACHE = 'guaita-bimup-0.57.0';
+const CACHE = 'guaita-bimup-0.58.0';
 const SHELL = ['./', './index.html', './HLP_guaitaBIMup-ajuda.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 
 self.addEventListener('install', e => {

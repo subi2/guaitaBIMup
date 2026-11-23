@@ -454,7 +454,7 @@ const K = (() => {
   function containerToJSON(c) {
     const o = { id: c.id, kind: c.kind, name: c.name,
       verts: [...c.verts.values()].map(v => [v.id, r6(v.p[0]), r6(v.p[1]), r6(v.p[2])]),
-      edges: [...c.edges.values()].map(e => e.sf ? [e.id, e.a, e.b, e.sf] : [e.id, e.a, e.b]),
+      edges: [...c.edges.values()].map(e => e.sm ? [e.id, e.a, e.b, e.sf || 0, e.sm] : e.sf ? [e.id, e.a, e.b, e.sf] : [e.id, e.a, e.b]),
       faces: [...c.faces.values()].map(f => ({ id: f.id, loop: f.loop, holes: f.holes, n: f.n.map(r6), mat: f.mat, tag: f.tag })),
       groups: [...c.groups.values()].map(containerToJSON) };
     if (c.kind === 'group') { o.t = c.t.map(r6); o.ifc = c.ifc; o.level = c.level; o.tag = c.tag; if (c.cut != null) o.cut = c.cut; if (c.thru) o.thru = 1; if (c.prio) o.prio = c.prio; if (c.nojoin) o.nj = 1; if (c.par) o.par = JSON.parse(JSON.stringify(c.par)); if (c.psets && Object.keys(c.psets).length) o.ps = JSON.parse(JSON.stringify(c.psets)); }
@@ -464,7 +464,7 @@ const K = (() => {
     const c = { id: renumber ? model.nid++ : o.id, kind: o.kind, name: o.name || '', verts: new Map(), edges: new Map(), faces: new Map(), groups: new Map() };
     const vm = new Map(), nid = id => { if (!renumber) return id; if (!vm.has(id)) vm.set(id, model.nid++); return vm.get(id); };
     for (const v of o.verts) { const id = nid(v[0]); c.verts.set(id, { id, p: [v[1], v[2], v[3]] }); }
-    for (const e of o.edges) { const id = renumber ? model.nid++ : e[0]; const E = { id, a: nid(e[1]), b: nid(e[2]) }; if (e[3]) E.sf = e[3]; c.edges.set(id, E); }
+    for (const e of o.edges) { const id = renumber ? model.nid++ : e[0]; const E = { id, a: nid(e[1]), b: nid(e[2]) }; if (e[3]) E.sf = e[3]; if (e[4]) E.sm = e[4]; c.edges.set(id, E); }
     for (const f of o.faces) { const id = renumber ? model.nid++ : f.id; c.faces.set(id, { id, loop: f.loop.map(nid), holes: (f.holes || []).map(h => h.map(nid)), n: f.n.slice(), mat: f.mat == null ? null : f.mat, tag: f.tag || 0 }); }
     for (const g of o.groups || []) { const s = containerFromJSON(model, g, renumber); c.groups.set(s.id, s); }
     if (o.kind === 'group') { c.t = (o.t || [0, 0, 0]).slice(); c.ifc = o.ifc || null; c.level = o.level == null ? null : o.level; c.tag = o.tag || 0; c.cut = o.cut == null ? null : !!o.cut; c.thru = !!o.thru; c.prio = o.prio || 0; c.nojoin = !!o.nj; c.par = o.par ? JSON.parse(JSON.stringify(o.par)) : null; if (o.ps) c.psets = JSON.parse(JSON.stringify(o.ps)); }

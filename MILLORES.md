@@ -54,3 +54,9 @@ Actualitzat a la v0.50.0. El que ja s'ha fet es treu d'aquí.
 - [ ] **Categoria IFC als objectes del SKP:** `skpToModel` (src/app-sess.js) crea grups amb `ifc: null`; la capa només es converteix en etiqueta. Cal decidir si la classificació manual ha de ser per grup, per component o per entitat.
   - Referència (SketchUp Classifier): la classificació s'assigna a la definició del component i afecta totes les instàncies; en un grup o un component cal convertir la geometria en component abans de classificar-la. Format d'intercanvi: SKC i IFC.
   - Pendent de comprovar: si el Classificador IFC mostra els grups sense categoria en una llista pròpia, i si els components repetits del SKP (ara grups independents) haurien de compartir classificació.
+
+
+## v0.58.0 · SKP: arestes suaus i suavitzades
+- Es llegeixen les marques soft/smooth/hidden de les arestes del SKP (OpenSKP, definicions i instàncies imbricades) i s'etiqueten a l'import: soft/hidden → e.sf; smooth → e.sm (ombreig suau a través de l'aresta, sense dependre de l'angle).
+- Pendent: marques en cares complexes triangulades pel soldat de vèrtexs, exportar sf/sm al SKP, instàncies compartides de components.
+- Llicència: OpenSKP (lector del format SKP) ja és a l'aplicació; el format SKP és propietat de Trimble, ús per interoperabilitat; no és assessorament jurídic.

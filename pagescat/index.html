@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
 SPDX-License-Identifier: AGPL-3.0-only
-guaitaBIMup v0.57.0 — © SBS BiM Consulting, Jordi Subirós
+guaitaBIMup v0.58.0 — © SBS BiM Consulting, Jordi Subirós
 Inclou Three.js r160 (MIT) © 2010-2023 three.js authors.
 -->
-<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.57.0</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.58.0</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
 <style>
 :root{
   --ink:#0E1116; --panel:#171B21; --panel-2:#1E232B; --panel-3:#252B34; --line:#2A313B;
@@ -5208,7 +5208,7 @@ const K = (() => {
   function containerToJSON(c) {
     const o = { id: c.id, kind: c.kind, name: c.name,
       verts: [...c.verts.values()].map(v => [v.id, r6(v.p[0]), r6(v.p[1]), r6(v.p[2])]),
-      edges: [...c.edges.values()].map(e => e.sf ? [e.id, e.a, e.b, e.sf] : [e.id, e.a, e.b]),
+      edges: [...c.edges.values()].map(e => e.sm ? [e.id, e.a, e.b, e.sf || 0, e.sm] : e.sf ? [e.id, e.a, e.b, e.sf] : [e.id, e.a, e.b]),
       faces: [...c.faces.values()].map(f => ({ id: f.id, loop: f.loop, holes: f.holes, n: f.n.map(r6), mat: f.mat, tag: f.tag })),
       groups: [...c.groups.values()].map(containerToJSON) };
     if (c.kind === 'group') { o.t = c.t.map(r6); o.ifc = c.ifc; o.level = c.level; o.tag = c.tag; if (c.cut != null) o.cut = c.cut; if (c.thru) o.thru = 1; if (c.prio) o.prio = c.prio; if (c.nojoin) o.nj = 1; if (c.par) o.par = JSON.parse(JSON.stringify(c.par)); if (c.psets && Object.keys(c.psets).length) o.ps = JSON.parse(JSON.stringify(c.psets)); }
@@ -5218,7 +5218,7 @@ const K = (() => {
     const c = { id: renumber ? model.nid++ : o.id, kind: o.kind, name: o.name || '', verts: new Map(), edges: new Map(), faces: new Map(), groups: new Map() };
     const vm = new Map(), nid = id => { if (!renumber) return id; if (!vm.has(id)) vm.set(id, model.nid++); return vm.get(id); };
     for (const v of o.verts) { const id = nid(v[0]); c.verts.set(id, { id, p: [v[1], v[2], v[3]] }); }
-    for (const e of o.edges) { const id = renumber ? model.nid++ : e[0]; const E = { id, a: nid(e[1]), b: nid(e[2]) }; if (e[3]) E.sf = e[3]; c.edges.set(id, E); }
+    for (const e of o.edges) { const id = renumber ? model.nid++ : e[0]; const E = { id, a: nid(e[1]), b: nid(e[2]) }; if (e[3]) E.sf = e[3]; if (e[4]) E.sm = e[4]; c.edges.set(id, E); }
     for (const f of o.faces) { const id = renumber ? model.nid++ : f.id; c.faces.set(id, { id, loop: f.loop.map(nid), holes: (f.holes || []).map(h => h.map(nid)), n: f.n.slice(), mat: f.mat == null ? null : f.mat, tag: f.tag || 0 }); }
     for (const g of o.groups || []) { const s = containerFromJSON(model, g, renumber); c.groups.set(s.id, s); }
     if (o.kind === 'group') { c.t = (o.t || [0, 0, 0]).slice(); c.ifc = o.ifc || null; c.level = o.level == null ? null : o.level; c.tag = o.tag || 0; c.cut = o.cut == null ? null : !!o.cut; c.thru = !!o.thru; c.prio = o.prio || 0; c.nojoin = !!o.nj; c.par = o.par ? JSON.parse(JSON.stringify(o.par)) : null; if (o.ps) c.psets = JSON.parse(JSON.stringify(o.ps)); }
@@ -5266,7 +5266,7 @@ const K = (() => {
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.57.0';
+const VERSION = '0.58.0';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -9050,11 +9050,19 @@ function softEdges(c) {
   }
   SOFTC.set(c, r); return r;
 }
+/* v0.58: e.sm = 1 ombreig suau a través de l'aresta (marca «smooth» del SKP), 2 facetat; sense marca, mana l'angle */
 function smoothN(c, f, vid) {
-  if (!S.style.ed.sm || softAng() <= 0) return f.n;
-  let m = SMOC.get(c); if (!m) { m = new Map(); for (const g of c.faces.values()) for (const lp of [g.loop, ...g.holes]) for (const v of lp) { let l = m.get(v); if (!l) m.set(v, l = []); if (!l.includes(g)) l.push(g); } SMOC.set(c, m); }
-  const l = m.get(vid); if (!l || l.length < 2) return f.n; const cs = Math.cos(softAng() * Math.PI / 180); let x = 0, y = 0, z = 0, k = 0;
-  for (const g of l) { const d = V.dot(g.n, f.n); if (g === f || (d > cs && d < 1 - 1e-7) || d >= 1 - 1e-7) { x += g.n[0]; y += g.n[1]; z += g.n[2]; k++; } }
+  if (!S.style.ed.sm) return f.n;
+  let m = SMOC.get(c); if (!m) { m = { vf: new Map(), ek: new Map(), nb: new Map() }; const key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+    for (const e of c.edges.values()) m.ek.set(key(e.a, e.b), e);
+    for (const g of c.faces.values()) for (const lp of [g.loop, ...g.holes]) for (let i = 0; i < lp.length; i++) { const v = lp[i]; let l = m.vf.get(v); if (!l) m.vf.set(v, l = []); if (!l.includes(g)) l.push(g); }
+    m.key = key; SMOC.set(c, m); }
+  const l = m.vf.get(vid); if (!l || l.length < 2) return f.n; const cs = Math.cos(softAng() * Math.PI / 180); let x = 0, y = 0, z = 0, k = 0;
+  const nbr = g => { const s = new Set(); for (const lp of [g.loop, ...g.holes]) { const i = lp.indexOf(vid); if (i >= 0) { s.add(lp[(i + 1) % lp.length]); s.add(lp[(i + lp.length - 1) % lp.length]); } } return s; }, nf = nbr(f);
+  for (const g of l) {
+    const d = V.dot(g.n, f.n); let use = g === f || (d > cs && d < 1 - 1e-7) || d >= 1 - 1e-7;
+    if (g !== f) for (const w of nbr(g)) if (nf.has(w)) { const e = m.ek.get(m.key(vid, w)); if (e && e.sm) use = e.sm === 1; break; }
+    if (use) { x += g.n[0]; y += g.n[1]; z += g.n[2]; k++; } }
   if (k < 2) return f.n; const L = Math.hypot(x, y, z) || 1; return [x / L, y / L, z / L];
 }
 /* marques manuals sobre la selecció (arestes, o totes les dels grups seleccionats) */
@@ -9062,7 +9070,7 @@ function edgeSoftSet(v) {
   const { c } = ctxInfo(), ids = [...S.sel.edges].filter(id => c.edges.has(id)), gs = [...S.sel.groups].map(id => c.groups.get(id)).filter(Boolean);
   if (!ids.length && !gs.length) { toast('Selecciona primer arestes o grups.'); return; }
   pushUndo(v === 1 ? 'Suavitza arestes' : v === 2 ? 'Endureix arestes' : 'Arestes per angle'); let n = 0;
-  const put = e => { if (v) e.sf = v; else delete e.sf; n++; };
+  const put = e => { if (v) { e.sf = v; e.sm = v; } else { delete e.sf; delete e.sm; } n++; };
   for (const id of ids) put(c.edges.get(id));
   (function walk(list) { for (const g of list) { for (const e of g.edges.values()) put(e); walk([...g.groups.values()]); } })(gs);
   refreshAll(); toast(n + ' aresta(es) ' + (v === 1 ? 'suaus' : v === 2 ? 'dures' : 'segons l’angle de l’estil (' + softAng() + '°)'));
@@ -12253,8 +12261,36 @@ setInterval(() => sessTouch(), 5000);
 window.addEventListener('beforeunload', () => { const o = sessIx(); if (o[SID]) { o[SID].alive = 0; if (!S.dirty) { sessIxSet(o); sessDrop(SID); return; } sessIxSet(o); } });
 
 /* ---------- SketchUp com a projecte ---------- */
+/* v0.58 · marques d'aresta del SKP (soft, smooth, hidden) en coordenades de món (m), com les calcula OpenSKP:
+   vèrtex de món = R·v + t (fila major, 13 valors: 9 de rotació, 3 de translació, 1 d'escala) per 0,0254 (polzades → m) */
+function skpEdgeMarks(sk) {
+  const out = [], I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], Z = 0.0254;
+  let m; try { m = sk.parse(); } catch (e) { return out; }
+  const ii = (M, p) => [M[0] * p[0] + M[1] * p[1] + M[2] * p[2] + M[9], M[3] * p[0] + M[4] * p[1] + M[5] * p[2] + M[10], M[6] * p[0] + M[7] * p[1] + M[8] * p[2] + M[11]];
+  const gs = (s, t) => { const i = [s[0], s[1], s[2], s[9]], r = [s[3], s[4], s[5], s[10]], o = [s[6], s[7], s[8], s[11]], a = [t[0], t[3], t[6], 0], c = [t[1], t[4], t[7], 0], f = [t[2], t[5], t[8], 0], l = [t[9], t[10], t[11], 1], h = (u, d) => u[0] * d[0] + u[1] * d[1] + u[2] * d[2] + u[3] * d[3];
+    return [h(i, a), h(i, c), h(i, f), h(r, a), h(r, c), h(r, f), h(o, a), h(o, c), h(o, f), h(i, l), h(r, l), h(o, l), (s[12] || 1) * (t[12] || 1)]; };
+  const walk = (d, M, depth) => {
+    if (!d || depth > 24 || out.length > 4e6) return;
+    const flagged = d.edges.filter(e => e.soft || e.smooth || e.hidden);
+    if (flagged.length) { const vs = new Map(d.vertices.map(v => [v.id, v])); for (const e of flagged) { const a = vs.get(e.v1Id), b = vs.get(e.v2Id); if (!a || !b) continue;
+      out.push({ a: ii(M, [a.x, a.y, a.z]).map(x => x * Z), b: ii(M, [b.x, b.y, b.z]).map(x => x * Z), soft: !!(e.soft || e.hidden), smooth: !!e.smooth }); } }
+    for (const it of d.instances) { const dd = m.definitions.get(it.refIdx); if (dd && it.matrix && it.matrix.length >= 12) walk(dd, gs(M, it.matrix.length >= 13 ? it.matrix : [...it.matrix, 1]), depth + 1); }
+  };
+  walk(m.root, I3, 0); return out;
+}
+/* aplica les marques a les arestes d'un grup (coincidència d'extrems amb tolerància) */
+function skpApplyMarks(g, marks) {
+  if (!marks.length) return 0; const h = 4e-3, tol = Math.max(2e-3, TOLB() * 2), cell = p => p.map(x => Math.floor(x / h)), K = (i, j, k) => i + ',' + j + ',' + k, idx = new Map();
+  for (const mk of marks) for (const p of [mk.a, mk.b]) { const c = cell(p), kk = K(c[0], c[1], c[2]); let l = idx.get(kk); if (!l) idx.set(kk, l = []); l.push(mk); }
+  const near = p => { const c = cell(p), r = []; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) { const l = idx.get(K(c[0] + i, c[1] + j, c[2] + k)); if (l) for (const mk of l) r.push(mk); } return r; };
+  let n = 0;
+  for (const e of g.edges.values()) { const pa = g.verts.get(e.a).p, pb = g.verts.get(e.b).p; let hit = null;
+    for (const mk of near(pa)) { const d1 = V.dist(mk.a, pa) <= tol && V.dist(mk.b, pb) <= tol, d2 = V.dist(mk.a, pb) <= tol && V.dist(mk.b, pa) <= tol; if (d1 || d2) { hit = hit || { soft: false, smooth: false }; hit.soft = hit.soft || mk.soft; hit.smooth = hit.smooth || mk.smooth; } }
+    if (hit && (hit.soft || hit.smooth)) { if (hit.soft) e.sf = 1; if (hit.smooth) e.sm = 1; n++; } }
+  return n;
+}
 function skpToModel(buf, opt) {
-  const sc = OpenSKP.SkpFile.fromBuffer(buf).buildScene(), mats = S.model.materials, matOf = new Map(), by = new Map(), mi = sc.meshIndex || {};
+  const skf = OpenSKP.SkpFile.fromBuffer(buf), sc = skf.buildScene(), mats = S.model.materials, matOf = new Map(), by = new Map(), mi = sc.meshIndex || {};
   const hex = c => '#' + c.slice(0, 3).map(x => Math.round(Math.min(1, Math.max(0, x)) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
   const mid = i => { if (matOf.has(i)) return matOf.get(i); const gm = sc.gltfMaterials && sc.gltfMaterials[i], col = gm && gm.pbrMetallicRoughness && gm.pbrMetallicRoughness.baseColorFactor ? hex(gm.pbrMetallicRoughness.baseColorFactor) : '#F4F4F0';
     let k = mats.findIndex(m => m.color.toUpperCase() === col); if (k < 0) { mats.push({ name: 'SKP ' + col, color: col }); k = mats.length - 1; } matOf.set(i, k); return k; };
@@ -12265,11 +12301,11 @@ function skpToModel(buf, opt) {
     for (let t = 0; t < T; t++) { const tri = (ix ? [ix[3 * t], ix[3 * t + 1], ix[3 * t + 2]] : [3 * t, 3 * t + 1, 3 * t + 2]).map(P), k2 = tri.map(q => q.map(x => Math.round(x * 1e4)).join(',')).sort().join('|');
       if (B.seen.has(k2)) continue; B.seen.add(k2); if (V.len(V.cross(V.sub(tri[1], tri[0]), V.sub(tri[2], tri[0]))) < 1e-9) continue; B.polys.push(new BOOL.Poly(tri, mid(pr.materialIndex))); }
   }
-  const out = [], used = new Map();
+  const out = [], used = new Map(), marks = skpEdgeMarks(skf); let marked = 0;
   for (const B of by.values()) { if (!B.polys.length) continue; let nm = B.name; const c = used.get(nm) || 0; used.set(nm, c + 1); if (c) nm += ' (' + (c + 1) + ')';
-    const r = polysToGroup(B.polys, S.model.root, { ifc: null, level: opt.level == null ? null : opt.level, tag: tag(B.layer) }, nm); r.g.ifc = null; S.model.root.groups.set(r.g.id, r.g); out.push(r.g); }
+    const r = polysToGroup(B.polys, S.model.root, { ifc: null, level: opt.level == null ? null : opt.level, tag: tag(B.layer) }, nm); r.g.ifc = null; S.model.root.groups.set(r.g.id, r.g); out.push(r.g); marked += skpApplyMarks(r.g, marks); }
   if (!out.length) throw new Error('el fitxer no conté cares');
-  return { groups: out, rep: by.size };
+  return { groups: out, rep: by.size, marks: marks.length, marked };
 }
 async function skpOpen(file, merge) {
   const buf = await file.arrayBuffer(), name = file.name.replace(/\.skp$/i, '');
@@ -12277,7 +12313,7 @@ async function skpOpen(file, merge) {
     if (merge) pushUndo('Importa SKP'); else { cancelTool(); S.model = newModel(); S.ctx = []; clearSel(); S.undo = []; S.redo = []; S.level = S.model.levels[0].id; S.tabs = []; S.view = null; S.viewClips = []; applyClips(); }
     const r = skpToModel(buf, { level: merge ? S.level : null }); if (!merge) { S.fileName = name + '.gbup.json'; adoptStyle(); }
     clearSel(); r.groups.forEach(g => S.sel.groups.add(g.id)); refreshAll(); refreshSel(); if (!merge) fitView(); markDirty();
-    toast((merge ? 'Importat ' : 'Obert ') + file.name + ': ' + r.groups.length + ' grup(s). Els components repetits queden com a grups independents.');
+    toast((merge ? 'Importat ' : 'Obert ') + file.name + ': ' + r.groups.length + ' grup(s)' + (r.marked ? ', ' + r.marked + ' aresta(es) suaus o suavitzades del fitxer' : '') + '. Els components repetits queden com a grups independents.');
   } catch (e) { toast('No s’ha pogut llegir el SKP: ' + e.message); } };
   if (!merge && S.dirty) { $('dlgBox').innerHTML = '<h3>Obre ' + esc(file.name) + '</h3><p>Hi ha canvis sense desar en aquest model. Vols descartar-los o obrir el SKP en una finestra nova?</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="sX">Cancel·la</button><button class="btn" id="sNw">Nova finestra…</button><button class="btn acc" id="sOk">Descarta i obre</button></div>'; $('dlg').classList.add('show');
     $('sX').onclick = () => $('dlg').classList.remove('show'); $('sNw').onclick = () => { $('dlg').classList.remove('show'); newWindow(); toast('Obre el SKP des de la finestra nova.'); }; $('sOk').onclick = () => { $('dlg').classList.remove('show'); go(); }; return; }

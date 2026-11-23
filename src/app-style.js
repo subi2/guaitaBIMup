@@ -269,11 +269,19 @@ function softEdges(c) {
   }
   SOFTC.set(c, r); return r;
 }
+/* v0.58: e.sm = 1 ombreig suau a través de l'aresta (marca «smooth» del SKP), 2 facetat; sense marca, mana l'angle */
 function smoothN(c, f, vid) {
-  if (!S.style.ed.sm || softAng() <= 0) return f.n;
-  let m = SMOC.get(c); if (!m) { m = new Map(); for (const g of c.faces.values()) for (const lp of [g.loop, ...g.holes]) for (const v of lp) { let l = m.get(v); if (!l) m.set(v, l = []); if (!l.includes(g)) l.push(g); } SMOC.set(c, m); }
-  const l = m.get(vid); if (!l || l.length < 2) return f.n; const cs = Math.cos(softAng() * Math.PI / 180); let x = 0, y = 0, z = 0, k = 0;
-  for (const g of l) { const d = V.dot(g.n, f.n); if (g === f || (d > cs && d < 1 - 1e-7) || d >= 1 - 1e-7) { x += g.n[0]; y += g.n[1]; z += g.n[2]; k++; } }
+  if (!S.style.ed.sm) return f.n;
+  let m = SMOC.get(c); if (!m) { m = { vf: new Map(), ek: new Map(), nb: new Map() }; const key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+    for (const e of c.edges.values()) m.ek.set(key(e.a, e.b), e);
+    for (const g of c.faces.values()) for (const lp of [g.loop, ...g.holes]) for (let i = 0; i < lp.length; i++) { const v = lp[i]; let l = m.vf.get(v); if (!l) m.vf.set(v, l = []); if (!l.includes(g)) l.push(g); }
+    m.key = key; SMOC.set(c, m); }
+  const l = m.vf.get(vid); if (!l || l.length < 2) return f.n; const cs = Math.cos(softAng() * Math.PI / 180); let x = 0, y = 0, z = 0, k = 0;
+  const nbr = g => { const s = new Set(); for (const lp of [g.loop, ...g.holes]) { const i = lp.indexOf(vid); if (i >= 0) { s.add(lp[(i + 1) % lp.length]); s.add(lp[(i + lp.length - 1) % lp.length]); } } return s; }, nf = nbr(f);
+  for (const g of l) {
+    const d = V.dot(g.n, f.n); let use = g === f || (d > cs && d < 1 - 1e-7) || d >= 1 - 1e-7;
+    if (g !== f) for (const w of nbr(g)) if (nf.has(w)) { const e = m.ek.get(m.key(vid, w)); if (e && e.sm) use = e.sm === 1; break; }
+    if (use) { x += g.n[0]; y += g.n[1]; z += g.n[2]; k++; } }
   if (k < 2) return f.n; const L = Math.hypot(x, y, z) || 1; return [x / L, y / L, z / L];
 }
 /* marques manuals sobre la selecció (arestes, o totes les dels grups seleccionats) */
@@ -281,7 +289,7 @@ function edgeSoftSet(v) {
   const { c } = ctxInfo(), ids = [...S.sel.edges].filter(id => c.edges.has(id)), gs = [...S.sel.groups].map(id => c.groups.get(id)).filter(Boolean);
   if (!ids.length && !gs.length) { toast('Selecciona primer arestes o grups.'); return; }
   pushUndo(v === 1 ? 'Suavitza arestes' : v === 2 ? 'Endureix arestes' : 'Arestes per angle'); let n = 0;
-  const put = e => { if (v) e.sf = v; else delete e.sf; n++; };
+  const put = e => { if (v) { e.sf = v; e.sm = v; } else { delete e.sf; delete e.sm; } n++; };
   for (const id of ids) put(c.edges.get(id));
   (function walk(list) { for (const g of list) { for (const e of g.edges.values()) put(e); walk([...g.groups.values()]); } })(gs);
   refreshAll(); toast(n + ' aresta(es) ' + (v === 1 ? 'suaus' : v === 2 ? 'dures' : 'segons l’angle de l’estil (' + softAng() + '°)'));
