@@ -60,3 +60,11 @@ Actualitzat a la v0.50.0. El que ja s'ha fet es treu d'aquí.
 - Es llegeixen les marques soft/smooth/hidden de les arestes del SKP (OpenSKP, definicions i instàncies imbricades) i s'etiqueten a l'import: soft/hidden → e.sf; smooth → e.sm (ombreig suau a través de l'aresta, sense dependre de l'angle).
 - Pendent: marques en cares complexes triangulades pel soldat de vèrtexs, exportar sf/sm al SKP, instàncies compartides de components.
 - Llicència: OpenSKP (lector del format SKP) ja és a l'aplicació; el format SKP és propietat de Trimble, ús per interoperabilitat; no és assessorament jurídic.
+
+## Importador d'IFC (ajornat)
+- Passa a «més endavant»: ja no és la v0.59.0. Pla ja escrit: nivells `IfcBuildingStorey`, classes IFC, quantitats i Psets, geolocalització (`IfcMapConversion`); lector candidat web-ifc (llicència per verificar); estudiar l'export IFC i el format .igz d'IngeTrazo amb IFC i .igz d'exemple de l'usuari.
+
+## v0.59.0 · retall de planta i càmera cònica al menú de vista (fet)
+- Pestanya de planta amb icona de retall: clic = activa/desactiva (manual); Maj+clic = automàtic. En automàtic, el retall només és actiu amb la càmera gairebé zenital (< 15° del zenit); en girar, el model es veu complet. Obrir una altra vista reinicia l'estat. Les escenes amb vista base de planta conserven el retall.
+- Panell «Vista» (caseta de vistes): botó «Càmera cònica…» sota la projecció; passa a cònica i obre el control de càmera.
+- Multivista (visor dividit en 2, 3 o 4): descartada de moment; es manté un sol viewport. Implicacions a anotar si es reprèn: `CAM`/`cam` globals, `renderer.clippingPlanes` global, siluetes, línies, etiquetes, nodes, símbol de càmera, cub i eines assumeixen una sola càmera.

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
 SPDX-License-Identifier: AGPL-3.0-only
-guaitaBIMup v0.58.0 — © SBS BiM Consulting, Jordi Subirós
+guaitaBIMup v0.59.0 — © SBS BiM Consulting, Jordi Subirós
 Inclou Three.js r160 (MIT) © 2010-2023 three.js authors.
 -->
-<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.58.0</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>guaitaBIMup v0.59.0</title><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23111318'/><polygon points='110,250 250,250 250,110 110,170' fill='%23D7F74A'/><polygon points='262,250 402,250 402,170 262,110' fill='%23FF2DCB'/><rect x='110' y='262' width='140' height='140' fill='%2300E5FF'/><rect x='262' y='262' width='140' height='140' fill='%23FFE100'/></svg>" type="image/svg+xml">
 <style>
 :root{
   --ink:#0E1116; --panel:#171B21; --panel-2:#1E232B; --panel-3:#252B34; --line:#2A313B;
@@ -92,7 +92,7 @@ header{height:42px;display:flex;align-items:center;gap:2px;padding:0 10px;backgr
 #tabs{position:absolute;left:10px;top:10px;display:flex;gap:2px;flex-wrap:wrap;max-width:calc(100% - 330px)}
 #tabs button{height:26px;padding:0 10px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:12px}
 #tabs button.on{color:var(--accent);border-color:var(--accent)}
-#tabs button i{font-style:normal;margin-left:8px;color:var(--dim)}
+#tabs button i{font-style:normal;margin-left:8px;color:var(--dim)}#tabs button i.pc{display:inline-flex;vertical-align:-2px;margin-left:7px}#tabs button i.pc svg{display:block}#tabs button.on i.pc{color:var(--accent)}#tabs button.on i.pc.off{color:var(--dim);opacity:.7}#tabs button.on i.pc.off svg path:last-child{stroke-dasharray:2 2}#tabs button i.pc:hover{color:var(--accent)}.nv-wide{width:100%;margin-top:6px}
 #ctxBar{position:absolute;left:10px;top:42px;display:none;align-items:center;gap:8px;padding:3px 10px;background:var(--sel);border:1px solid var(--accent);border-radius:6px;font-size:12px}
 #ctxBar.show{display:flex}
 #cubeBox{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
@@ -5266,7 +5266,7 @@ const K = (() => {
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.58.0';
+const VERSION = '0.59.0';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -5353,7 +5353,7 @@ scene.add(gGround, gAxes, gModel, gAnnot, gSel, gPrev);
 const gGhost = new THREE.Group(), matGhost = new THREE.MeshBasicMaterial({ color: 0xA9ADB3, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
 scene.add(gGhost); let ghostStale = true;
 function updGhost() {
-  const P = S.planGhost && S.viewClips.length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
+  const P = S.planGhost && viewClipsEff().length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
   renderer.localClippingEnabled = true;
   if (ghostStale) { gGhost.clear(); gModel.traverse(o => { if (o.isMesh && o.geometry && !(o.userData && o.userData.back)) { const m = new THREE.Mesh(o.geometry, matGhost); m.matrixAutoUpdate = false; m.matrix.copy(o.matrix); gGhost.add(m); } }); ghostStale = false; }
   matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot - 0.003)]; /* v0.52: estrictament sota el pla inferior (sense cares coplanars al nivell) */
@@ -5811,9 +5811,10 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (camAnim) stepAnim(now);
   if (!needRender) return; needRender = false;
+  if (typeof planCutSync === 'function') planCutSync();
   groundSync(); gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
   /* planta: el pla del terra queda sota el pla inferior de la vista; el retall no és exacte (precisió) i deixaria franges, s'amaga el pla i es manté la quadrícula */
-  { const fl = S.viewClips && S.viewClips.find(q => q.floor), hide = !!fl && groundCfg().z < -fl.constant + 0.05; for (const o of gGround.children) if (o.isMesh) o.visible = !hide; }
+  { const fl = viewClipsEff().find(q => q.floor), hide = !!fl && groundCfg().z < -fl.constant + 0.05; for (const o of gGround.children) if (o.isMesh) o.visible = !hide; }
   updSil(); updBackCorner(); updGhost(); if (typeof camGlyphSync === 'function') camGlyphSync(); if (renderer) { renderer.render(scene, cam); lnRenderRef(); if (typeof camRenderPass === 'function') camRenderPass(); }
   updLabels(); gripsUpdate(); drawCube(); if (typeof camOverlay === 'function') camOverlay();
 }
@@ -6361,7 +6362,7 @@ function viewName(key) {
 }
 function openView(key, quiet) {
   const [t, id] = key.split(':'); if (viewName(key) == null) return;
-  S.view = key; if (!S.tabs.includes(key)) S.tabs.push(key);
+  S.view = key; S.pcut = null; S._pcLast = undefined; if (!S.tabs.includes(key)) S.tabs.push(key);
   S.planGhost = null; const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
   if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); sceneRestore(v, clips); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj, lens: v.cam.lens }); if (v.style) useStyle(v.style, true); }
   else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; const pv = vrOf(l); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + pv.cut)); { const fl = new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + pv.bot - 0.001)); fl.floor = true; clips.push(fl); } if (pv.depth > 0) S.planGhost = { lvl: l.id, elev: l.elev, bot: pv.bot, depth: pv.depth }; animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }
@@ -6414,7 +6415,28 @@ function boxPlanes() {
   }
   return out;
 }
-function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
+/* v0.59 · retall de planta: S.viewClips és el retall base de la vista; en una pestanya de planta es pot desactivar.
+   S.pcut: null = automàtic (actiu només amb la càmera gairebé zenital), true/false = forçat per l'usuari fins que s'obri una altra vista */
+const PC_ZEN = 0.26;
+function planCutIsView() { return typeof S.view === 'string' && S.view.startsWith('plan:'); }
+function planCutAuto() { const ph = camAnim && camAnim.to && camAnim.to.phi != null ? camAnim.to.phi : CAM.phi; return ph < PC_ZEN; }
+function planCutOn() { if (!planCutIsView()) return true; return S.pcut == null ? planCutAuto() : !!S.pcut; }
+function viewClipsEff() { return S.viewClips.length && planCutOn() ? S.viewClips : []; }
+function planCutSync(force) {
+  const on = planCutOn(); if (!force && S._pcLast === on) return; S._pcLast = on;
+  if (typeof applyClips === 'function') applyClips();
+  const b = document.querySelector('#tabs button.on i.pc'); if (b) planCutTab(b);
+  if (typeof lnRefBuild === 'function' && planCutIsView()) lnRefBuild();
+  needRender = true;
+}
+function planCutTab(i) { const on = planCutOn(), man = S.pcut != null; i.classList.toggle('off', !on); i.title = (on ? 'Retall de planta actiu' : 'Model complet, sense retall') + (man ? ' (manual)' : ' (automàtic)') + ' · clic: ' + (on ? 'mostra el model complet' : 'torna a tallar') + ' · Maj+clic: automàtic'; }
+function togglePlanCut(auto) {
+  if (!planCutIsView()) return;
+  if (auto) { S.pcut = null; toast('Retall de planta: automàtic (només en vista de planta).'); }
+  else { S.pcut = !planCutOn(); toast(S.pcut ? 'Retall de planta activat.' : 'Model complet: retall de planta desactivat.'); }
+  planCutSync(true);
+}
+function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; const vc = viewClipsEff(); renderer.clippingPlanes = [...vc, ...secPlanes(), ...boxPlanes()]; needRender = true; }
 
 /* ---------- nivell de treball ---------- */
 function setLevel(id) { if (!S.model.levels.some(l => l.id === id)) return; S.level = id; const l = S.model.levels.find(x => x.id === id); refreshAll(); toast('Nivell de treball: ' + l.name + ' (' + fmtElev(l.elev) + ')'); }
@@ -6757,7 +6779,7 @@ const NV_ACT = {
   N: () => goDir(NAV_VIEWS.N), S: () => goDir(NAV_VIEWS.S), E: () => goDir(NAV_VIEWS.E), O: () => goDir(NAV_VIEWS.O), PL: () => goDir(NAV_VIEWS.PL),
   home: () => { if (CAM.proj === 'mil' || CAM.proj === 'cav') CAM.proj = 'axo'; animateCam({ theta: -Math.PI / 4, phi: 0.95 }); },
   prev: () => prevView(), fit: () => fitView(!!selCount()), sec: () => sectionBoxPanel(),
-  conic: () => setProj('conic'), axo: () => setProj('axo'), cav: () => setProj('cav'), mil: () => setProj('mil'),
+  camwin: () => { if (CAM.proj !== 'conic') setProj('conic'); camWin(); }, conic: () => setProj('conic'), axo: () => setProj('axo'), cav: () => setProj('cav'), mil: () => setProj('mil'),
   SO: () => { CAM.proj = 'axo'; goDir(axoDir('SO')); }, SE: () => { CAM.proj = 'axo'; goDir(axoDir('SE')); }, NE: () => { CAM.proj = 'axo'; goDir(axoDir('NE')); }, NO: () => { CAM.proj = 'axo'; goDir(axoDir('NO')); },
   wire: () => { S.style.wire = !S.style.wire; refreshAll(); }, xray: () => { S.style.xray = !S.style.xray; refreshAll(); }, edges: () => { S.style.edges = !S.style.edges; refreshAll(); },
   cifc: () => { S.style.colorBy = S.style.colorBy === 'ifc' ? 'mat' : 'ifc'; refreshAll(); },
@@ -6783,6 +6805,7 @@ function buildNav() {
     sec('Projecció') + '<div class="nv-row2">' +
     proj('axo', 'Axonomètrica', nvSvg('<path d="M13 3l9 5v10l-9 5-9-5V8zM4 8l9 5 9-5M13 13v10"/>', 26, 1.5)) + proj('conic', 'Cònica', nvSvg('<path d="M3 5h20v16H3zM9 9h8v8H9zM3 5l6 4M23 5l-6 4M3 21l6-4M23 21l-6-4"/>', 26, 1.5)) +
     proj('cav', 'Cavallera', nvSvg('<path d="M3 10h12v12H3zM9 4h12v12M3 10l6-6M15 10l6-6M15 22l6-6"/>', 26, 1.5)) + proj('mil', 'Militar', nvSvg('<path d="M4 13l9-4 9 4-9 4zM4 13v5l9 4 9-4v-5M13 17v5"/>', 26, 1.5)) + '</div>' +
+    '<button class="nv-o h nv-wide" data-a="camwin" data-h="Càmera cònica: focal, quadre, fugues i òrbita" title="Càmera cònica…" aria-label="Càmera cònica">' + nvSvg('<path d="M3 8h14v10H3zM17 11l5-3v10l-5-3M7 8l1.5-2h5L15 8"/>', 26, 1.5) + 'Càmera cònica…</button>' +
     sec('Punt de vista axonomètric') + '<div class="nv-row4">' + pv('SO') + pv('SE') + pv('NE') + pv('NO') + '</div>' +
     sec('Estil') + '<div class="nv-row4">' +
     sty('wire', 'Filferro', nvSvg('<path d="M11 3l8 4v9l-8 4-8-4V7zM3 7l8 4 8-4"/><path d="M11 11v9" stroke-dasharray="2 2"/>', 22, 1.4)) +
@@ -9118,7 +9141,7 @@ function lnMat(kind, bd) {
 /* ---------- referència de distància (graus de llunyania) ---------- */
 function lnRef() {
   const k = S.view || '';
-  if (S.viewClips && S.viewClips.length && /^(plan|sec|bsec):/.test(k)) { const p = S.viewClips[0]; return { n: [p.normal.x, p.normal.y, p.normal.z], c: p.constant }; }
+  if (viewClipsEff().length && /^(plan|sec|bsec):/.test(k)) { const p = viewClipsEff()[0]; return { n: [p.normal.x, p.normal.y, p.normal.z], c: p.constant }; }
   if (k.startsWith('elev:')) {
     const e = ELEVS.find(x => x[0] === k.slice(5)); if (!e) return null; const n = [-Math.cos(e[2]), -Math.sin(e[2]), 0], b = modelBox(); let mn = Infinity;
     for (const x of [b.min[0], b.max[0]]) for (const y of [b.min[1], b.max[1]]) mn = Math.min(mn, n[0] * x + n[1] * y); return { n, c: -mn };
@@ -9249,7 +9272,7 @@ function lnCutLines(pls) {
 
 /* ---------- reflexades (D): arestes darrere l'observador d'una planta ---------- */
 function lnRefBuild() {
-  disposeGroup(gRef); const k = S.view || ''; if (!k.startsWith('plan:')) return;
+  disposeGroup(gRef); const k = S.view || ''; if (!k.startsWith('plan:') || !planCutOn()) return;
   const l = S.model.levels.find(x => String(x.id) === k.slice(5)); if (!l) return; const ln = S.style.ln, pv = vrOf(l); if (!(pv.rear > 0) || !ln.vis.D) return;
   const z0 = l.elev + pv.cut, z1 = z0 + pv.rear, pos = [];
   for (const e of SNAP.edges) {
@@ -12758,7 +12781,7 @@ function syncUI() {
   const ls = $('lvlSel'); ls.innerHTML = S.model.levels.slice().reverse().map(l => '<option value="' + l.id + '"' + (l.id === S.level ? ' selected' : '') + '>' + esc(l.name) + '  ' + fmtElev(l.elev) + '</option>').join('');
   syncClass(); updCursor();
   const tabs = $('tabs'); tabs.innerHTML = '';
-  S.tabs.forEach(k => { const nm = viewName(k); if (nm == null) return; const b = el('button', S.view === k ? 'on' : '', esc(nm) + '<i title="Tanca">✕</i>'); b.onclick = e => { if (e.target.tagName === 'I') closeTab(k); else openView(k, true); }; tabs.appendChild(b); });
+  S.tabs.forEach(k => { const nm = viewName(k); if (nm == null) return; const pl = k.startsWith('plan:'), b = el('button', S.view === k ? 'on' : '', esc(nm) + (pl ? '<i class="pc"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 11h12" stroke-dasharray="2.4 1.6"/><path d="M3 11V6l5-3 5 3v5"/></svg></i>' : '') + '<i class="cl" title="Tanca">✕</i>'); if (pl && S.view === k) planCutTab(b.querySelector('i.pc')); b.onclick = e => { const pc = e.target.closest('i.pc'); if (pc) { if (S.view === k) togglePlanCut(e.shiftKey); else openView(k, true); } else if (e.target.closest('i.cl')) closeTab(k); else openView(k, true); }; tabs.appendChild(b); });
   const cb = $('ctxBar'); cb.classList.toggle('show', S.ctx.length > 0);
   if (S.ctx.length) { const g = ctxInfo(); const gr = (function f(c, ids) { for (const id of ids) c = c.groups.get(id); return c; })(S.model.root, S.ctx); $('ctxName').textContent = 'Editant: ' + (gr && (gr.name || 'Grup ' + gr.id)); }
   const cnt = K.countAll(S.model.root); $('stInfo').textContent = cnt.f + ' cares · ' + cnt.e + ' arestes · ' + (S.model.levels.find(l => l.id === S.level) || { name: '—' }).name;

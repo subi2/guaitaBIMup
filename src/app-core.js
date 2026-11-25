@@ -5,7 +5,7 @@
    inferència i selecció de punts.
    ============================================================ */
 'use strict';
-const VERSION = '0.58.0';
+const VERSION = '0.59.0';
 const V = K.V;
 const $ = id => document.getElementById(id);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -92,7 +92,7 @@ scene.add(gGround, gAxes, gModel, gAnnot, gSel, gPrev);
 const gGhost = new THREE.Group(), matGhost = new THREE.MeshBasicMaterial({ color: 0xA9ADB3, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
 scene.add(gGhost); let ghostStale = true;
 function updGhost() {
-  const P = S.planGhost && S.viewClips.length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
+  const P = S.planGhost && viewClipsEff().length ? S.planGhost : null; gGhost.visible = !!P; if (!P || !renderer) return;
   renderer.localClippingEnabled = true;
   if (ghostStale) { gGhost.clear(); gModel.traverse(o => { if (o.isMesh && o.geometry && !(o.userData && o.userData.back)) { const m = new THREE.Mesh(o.geometry, matGhost); m.matrixAutoUpdate = false; m.matrix.copy(o.matrix); gGhost.add(m); } }); ghostStale = false; }
   matGhost.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, 1), -(P.elev + P.bot - P.depth)), new THREE.Plane(new THREE.Vector3(0, 0, -1), P.elev + P.bot - 0.003)]; /* v0.52: estrictament sota el pla inferior (sense cares coplanars al nivell) */
@@ -550,9 +550,10 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (camAnim) stepAnim(now);
   if (!needRender) return; needRender = false;
+  if (typeof planCutSync === 'function') planCutSync();
   groundSync(); gGround.visible = S.show.ground; gAxes.visible = S.show.axes;
   /* planta: el pla del terra queda sota el pla inferior de la vista; el retall no és exacte (precisió) i deixaria franges, s'amaga el pla i es manté la quadrícula */
-  { const fl = S.viewClips && S.viewClips.find(q => q.floor), hide = !!fl && groundCfg().z < -fl.constant + 0.05; for (const o of gGround.children) if (o.isMesh) o.visible = !hide; }
+  { const fl = viewClipsEff().find(q => q.floor), hide = !!fl && groundCfg().z < -fl.constant + 0.05; for (const o of gGround.children) if (o.isMesh) o.visible = !hide; }
   updSil(); updBackCorner(); updGhost(); if (typeof camGlyphSync === 'function') camGlyphSync(); if (renderer) { renderer.render(scene, cam); lnRenderRef(); if (typeof camRenderPass === 'function') camRenderPass(); }
   updLabels(); gripsUpdate(); drawCube(); if (typeof camOverlay === 'function') camOverlay();
 }

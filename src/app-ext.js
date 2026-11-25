@@ -22,7 +22,28 @@ function boxPlanes() {
   }
   return out;
 }
-function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; renderer.clippingPlanes = [...S.viewClips, ...secPlanes(), ...boxPlanes()]; needRender = true; }
+/* v0.59 · retall de planta: S.viewClips és el retall base de la vista; en una pestanya de planta es pot desactivar.
+   S.pcut: null = automàtic (actiu només amb la càmera gairebé zenital), true/false = forçat per l'usuari fins que s'obri una altra vista */
+const PC_ZEN = 0.26;
+function planCutIsView() { return typeof S.view === 'string' && S.view.startsWith('plan:'); }
+function planCutAuto() { const ph = camAnim && camAnim.to && camAnim.to.phi != null ? camAnim.to.phi : CAM.phi; return ph < PC_ZEN; }
+function planCutOn() { if (!planCutIsView()) return true; return S.pcut == null ? planCutAuto() : !!S.pcut; }
+function viewClipsEff() { return S.viewClips.length && planCutOn() ? S.viewClips : []; }
+function planCutSync(force) {
+  const on = planCutOn(); if (!force && S._pcLast === on) return; S._pcLast = on;
+  if (typeof applyClips === 'function') applyClips();
+  const b = document.querySelector('#tabs button.on i.pc'); if (b) planCutTab(b);
+  if (typeof lnRefBuild === 'function' && planCutIsView()) lnRefBuild();
+  needRender = true;
+}
+function planCutTab(i) { const on = planCutOn(), man = S.pcut != null; i.classList.toggle('off', !on); i.title = (on ? 'Retall de planta actiu' : 'Model complet, sense retall') + (man ? ' (manual)' : ' (automàtic)') + ' · clic: ' + (on ? 'mostra el model complet' : 'torna a tallar') + ' · Maj+clic: automàtic'; }
+function togglePlanCut(auto) {
+  if (!planCutIsView()) return;
+  if (auto) { S.pcut = null; toast('Retall de planta: automàtic (només en vista de planta).'); }
+  else { S.pcut = !planCutOn(); toast(S.pcut ? 'Retall de planta activat.' : 'Model complet: retall de planta desactivat.'); }
+  planCutSync(true);
+}
+function applyClips() { if (!renderer) return; if (!S.viewClips.length) S.planGhost = null; const vc = viewClipsEff(); renderer.clippingPlanes = [...vc, ...secPlanes(), ...boxPlanes()]; needRender = true; }
 
 /* ---------- nivell de treball ---------- */
 function setLevel(id) { if (!S.model.levels.some(l => l.id === id)) return; S.level = id; const l = S.model.levels.find(x => x.id === id); refreshAll(); toast('Nivell de treball: ' + l.name + ' (' + fmtElev(l.elev) + ')'); }
@@ -365,7 +386,7 @@ const NV_ACT = {
   N: () => goDir(NAV_VIEWS.N), S: () => goDir(NAV_VIEWS.S), E: () => goDir(NAV_VIEWS.E), O: () => goDir(NAV_VIEWS.O), PL: () => goDir(NAV_VIEWS.PL),
   home: () => { if (CAM.proj === 'mil' || CAM.proj === 'cav') CAM.proj = 'axo'; animateCam({ theta: -Math.PI / 4, phi: 0.95 }); },
   prev: () => prevView(), fit: () => fitView(!!selCount()), sec: () => sectionBoxPanel(),
-  conic: () => setProj('conic'), axo: () => setProj('axo'), cav: () => setProj('cav'), mil: () => setProj('mil'),
+  camwin: () => { if (CAM.proj !== 'conic') setProj('conic'); camWin(); }, conic: () => setProj('conic'), axo: () => setProj('axo'), cav: () => setProj('cav'), mil: () => setProj('mil'),
   SO: () => { CAM.proj = 'axo'; goDir(axoDir('SO')); }, SE: () => { CAM.proj = 'axo'; goDir(axoDir('SE')); }, NE: () => { CAM.proj = 'axo'; goDir(axoDir('NE')); }, NO: () => { CAM.proj = 'axo'; goDir(axoDir('NO')); },
   wire: () => { S.style.wire = !S.style.wire; refreshAll(); }, xray: () => { S.style.xray = !S.style.xray; refreshAll(); }, edges: () => { S.style.edges = !S.style.edges; refreshAll(); },
   cifc: () => { S.style.colorBy = S.style.colorBy === 'ifc' ? 'mat' : 'ifc'; refreshAll(); },
@@ -391,6 +412,7 @@ function buildNav() {
     sec('Projecció') + '<div class="nv-row2">' +
     proj('axo', 'Axonomètrica', nvSvg('<path d="M13 3l9 5v10l-9 5-9-5V8zM4 8l9 5 9-5M13 13v10"/>', 26, 1.5)) + proj('conic', 'Cònica', nvSvg('<path d="M3 5h20v16H3zM9 9h8v8H9zM3 5l6 4M23 5l-6 4M3 21l6-4M23 21l-6-4"/>', 26, 1.5)) +
     proj('cav', 'Cavallera', nvSvg('<path d="M3 10h12v12H3zM9 4h12v12M3 10l6-6M15 10l6-6M15 22l6-6"/>', 26, 1.5)) + proj('mil', 'Militar', nvSvg('<path d="M4 13l9-4 9 4-9 4zM4 13v5l9 4 9-4v-5M13 17v5"/>', 26, 1.5)) + '</div>' +
+    '<button class="nv-o h nv-wide" data-a="camwin" data-h="Càmera cònica: focal, quadre, fugues i òrbita" title="Càmera cònica…" aria-label="Càmera cònica">' + nvSvg('<path d="M3 8h14v10H3zM17 11l5-3v10l-5-3M7 8l1.5-2h5L15 8"/>', 26, 1.5) + 'Càmera cònica…</button>' +
     sec('Punt de vista axonomètric') + '<div class="nv-row4">' + pv('SO') + pv('SE') + pv('NE') + pv('NO') + '</div>' +
     sec('Estil') + '<div class="nv-row4">' +
     sty('wire', 'Filferro', nvSvg('<path d="M11 3l8 4v9l-8 4-8-4V7zM3 7l8 4 8-4"/><path d="M11 11v9" stroke-dasharray="2 2"/>', 22, 1.4)) +

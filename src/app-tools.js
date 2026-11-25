@@ -541,7 +541,7 @@ function viewName(key) {
 }
 function openView(key, quiet) {
   const [t, id] = key.split(':'); if (viewName(key) == null) return;
-  S.view = key; if (!S.tabs.includes(key)) S.tabs.push(key);
+  S.view = key; S.pcut = null; S._pcLast = undefined; if (!S.tabs.includes(key)) S.tabs.push(key);
   S.planGhost = null; const clips = []; const b = modelBox(), cx = V.mul(V.add(b.min, b.max), 0.5), r = Math.max(V.dist(b.min, b.max) / 2, 3), fitD = r / Math.sin(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.05;
   if (t === 'scene') { const v = S.model.views.find(x => String(x.id) === id); sceneRestore(v, clips); if (v.cam) animateCam({ t: v.cam.t, theta: v.cam.theta, phi: v.cam.phi, dist: v.cam.dist, proj: v.cam.proj, lens: v.cam.lens }); if (v.style) useStyle(v.style, true); }
   else if (t === 'plan') { const l = S.model.levels.find(x => String(x.id) === id); S.level = l.id; const pv = vrOf(l); clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), l.elev + pv.cut)); { const fl = new THREE.Plane(new THREE.Vector3(0, 0, 1), -(l.elev + pv.bot - 0.001)); fl.floor = true; clips.push(fl); } if (pv.depth > 0) S.planGhost = { lvl: l.id, elev: l.elev, bot: pv.bot, depth: pv.depth }; animateCam({ proj: 'axo', theta: -Math.PI / 2, phi: 0.0005, t: [cx[0], cx[1], l.elev], dist: fitD }); }

@@ -40,7 +40,7 @@ function lnMat(kind, bd) {
 /* ---------- referència de distància (graus de llunyania) ---------- */
 function lnRef() {
   const k = S.view || '';
-  if (S.viewClips && S.viewClips.length && /^(plan|sec|bsec):/.test(k)) { const p = S.viewClips[0]; return { n: [p.normal.x, p.normal.y, p.normal.z], c: p.constant }; }
+  if (viewClipsEff().length && /^(plan|sec|bsec):/.test(k)) { const p = viewClipsEff()[0]; return { n: [p.normal.x, p.normal.y, p.normal.z], c: p.constant }; }
   if (k.startsWith('elev:')) {
     const e = ELEVS.find(x => x[0] === k.slice(5)); if (!e) return null; const n = [-Math.cos(e[2]), -Math.sin(e[2]), 0], b = modelBox(); let mn = Infinity;
     for (const x of [b.min[0], b.max[0]]) for (const y of [b.min[1], b.max[1]]) mn = Math.min(mn, n[0] * x + n[1] * y); return { n, c: -mn };
@@ -171,7 +171,7 @@ function lnCutLines(pls) {
 
 /* ---------- reflexades (D): arestes darrere l'observador d'una planta ---------- */
 function lnRefBuild() {
-  disposeGroup(gRef); const k = S.view || ''; if (!k.startsWith('plan:')) return;
+  disposeGroup(gRef); const k = S.view || ''; if (!k.startsWith('plan:') || !planCutOn()) return;
   const l = S.model.levels.find(x => String(x.id) === k.slice(5)); if (!l) return; const ln = S.style.ln, pv = vrOf(l); if (!(pv.rear > 0) || !ln.vis.D) return;
   const z0 = l.elev + pv.cut, z1 = z0 + pv.rear, pos = [];
   for (const e of SNAP.edges) {
