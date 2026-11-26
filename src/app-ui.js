@@ -213,7 +213,13 @@ function renderInfo() {
     b.innerHTML = kv([['Tipus', 'Grup'], ['Nom', '<input type="text" id="gName" value="' + esc(g.name) + '">'], ['Classe IFC', '<select id="gIfc"><option value="">— Esbós (sense classe) —</option>' + IFC.map(r => '<option value="' + r[0] + '"' + (g.ifc === r[0] ? ' selected' : '') + '>' + esc(r[1]) + ' · ' + r[0] + '</option>').join('') + '</select>'],
       ['Nivell', '<select id="gLvl"><option value="">—</option>' + S.model.levels.map(l => '<option value="' + l.id + '"' + (g.level === l.id ? ' selected' : '') + '>' + esc(l.name) + '</option>').join('') + '</select>'], ['Naturalesa', g.ifc ? 'BIM' : 'Esbós']]);
     $('gName').onchange = e => { pushUndo(); g.name = e.target.value; renderTray(); };
-    $('gIfc').onchange = e => { pushUndo(); g.ifc = e.target.value || null; refreshAll(); };
+    $('gIfc').onchange = e => { pushUndo(); setIfc([g], e.target.value || null); refreshAll(); };
+    if (g.skp) { const sib = skpSiblings(g), rows = [['Origen', esc(skpKindTxt(g))]];
+      if (g.skp.kind === 'component') rows.push(['Instàncies', String(sib.length + 1)]);
+      if (g.skp.schema) rows.push(['Classe al fitxer', esc(g.skp.schema)]);
+      b.insertAdjacentHTML('beforeend', '<h3 class="skp-h">SketchUp</h3>' + kv(rows));
+      if (g.skp.kind === 'component' && sib.length) { const l = el('label', 'skp-all', '<input type="checkbox" id="gSkpAll"' + (S.skpAll ? ' checked' : '') + '> La classe s’aplica a totes les instàncies del component'); b.appendChild(l); $('gSkpAll').onchange = e => { S.skpAll = e.target.checked; }; }
+      if (g.skp.props) b.insertAdjacentHTML('beforeend', '<details class="skp-p"><summary>Propietats del fitxer (' + Object.keys(g.skp.props).length + ', només lectura)</summary>' + kv(Object.keys(g.skp.props).map(k => [k, esc(g.skp.props[k])])) + '</details>'); }
     $('gLvl').onchange = e => { pushUndo(); g.level = e.target.value ? +e.target.value : null; if (g.par && g.level != null) { g.par.lv = g.level; refreshAll(); } else renderInfo(); };
     b.insertAdjacentHTML('beforeend', lnElemHTML(g)); lnElemBind(b, g);
     if (g.par) parPanel(b, g); else { const cv = el('button', 'btn sm', 'Converteix en coberta paramètrica'); cv.id = 'toRoof'; cv.title = 'Pren el perímetre de la cara inferior, el gruix i la cota del grup'; cv.onclick = () => roofAdopt(ctxInfo().c, g); b.appendChild(cv); }
@@ -250,7 +256,7 @@ function ifcPanel(b) {
     const row = el('div', 'row it' + (S.ifcActive === r[0] ? ' on' : ''), '<input type="checkbox"' + (!S.hiddenIfc.has(r[0]) ? ' checked' : '') + ' title="Visible"><span class="sw" style="background:' + r[2] + '"></span><span class="gw" title="' + r[0] + '">' + esc(r[1]) + '</span><span class="mono dim">' + (cnt[r[0]] || '') + '</span>');
     row.dataset.ifc = r[0]; row.dataset.ifcq = (r[1] + ' ' + r[0]).toLowerCase(); if (S.ifcQ && !row.dataset.ifcq.includes(S.ifcQ.toLowerCase())) row.style.display = 'none';
     const c = row.querySelector('input'); c.onclick = e => e.stopPropagation(); c.onchange = e => { if (e.target.checked) S.hiddenIfc.delete(r[0]); else S.hiddenIfc.add(r[0]); refreshAll(); };
-    row.onclick = () => { setActiveClass(r[0], true); if (selCount() && S.sel.groups.size) { pushUndo(); const { c: cc } = ctxInfo(); S.sel.groups.forEach(id => { const g = cc.groups.get(id); if (g) g.ifc = r[0]; }); refreshAll(); } else renderTray(); };
+    row.onclick = () => { setActiveClass(r[0], true); if (selCount() && S.sel.groups.size) { pushUndo(); const { c: cc } = ctxInfo(); setIfc([...S.sel.groups].map(id => cc.groups.get(id)).filter(Boolean), r[0]); refreshAll(); } else renderTray(); };
     b.appendChild(row);
   });
   b.appendChild(el('div', 'empty', 'Clic en una classe: l’activa i l’assigna als grups seleccionats. Eina Classifica (I): cubell en sèrie; Alt+clic recull la classe d’un grup.'));

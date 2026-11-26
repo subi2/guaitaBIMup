@@ -1,6 +1,6 @@
 /* ============================================================
    guaitaBIMup 10 — exportació SKP experimental
-   Escriptor: OpenSKP 1.3.0 (MIT), format MFC «legacy» v17 (SketchUp 2013–2020,
+   Escriptor: OpenSKP 1.7.0 (MIT), format MFC «legacy» v17 (SketchUp 2013–2020,
    que SketchUp més nou també obre). Avisos de tercers a la capçalera del bundle.
    Cada element (grup BIM o bloc d'esbós) → un grup de SketchUp amb la seva etiqueta
    com a capa, i la classe IFC / nivell com a atributs ('guaitaBIMup').

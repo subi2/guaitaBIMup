@@ -49,12 +49,13 @@ Actualitzat a la v0.50.0. El que ja s'ha fet es treu d'aquí.
 - [ ] **Imatge de fons al visor, al llenç o a la vista:** posar una foto darrere el model (opacitat, fixada a la càmera). És el pas previ al camera matching.
 - [ ] **Camera matching:** traçar fugues sobre la foto i ajustar posició, mira i focal de la càmera perquè el model hi coincideixi.
 
-## SKP: classificació IFC dels objectes importats
-
-- [ ] **Categoria IFC als objectes del SKP:** `skpToModel` (src/app-sess.js) crea grups amb `ifc: null`; la capa només es converteix en etiqueta. Cal decidir si la classificació manual ha de ser per grup, per component o per entitat.
-  - Referència (SketchUp Classifier): la classificació s'assigna a la definició del component i afecta totes les instàncies; en un grup o un component cal convertir la geometria en component abans de classificar-la. Format d'intercanvi: SKC i IFC.
-  - Pendent de comprovar: si el Classificador IFC mostra els grups sense categoria en una llista pròpia, i si els components repetits del SKP (ara grups independents) haurien de compartir classificació.
-
+## SKP: classificació IFC (v0.60.0 fet; pendents)
+- Fet: lector OpenSKP 1.7.0 (`buildInstancedScene` + `parse`); una instància de primer nivell = un grup (els components repetits ja no es fusionen pel nom); origen `g.skp = {kind: group|component, def, defId, schema, props}`; classe de `AppliedSchemaTypes` (i de `guaitaBIMup.ifc_class` en reimportar exportacions pròpies); StandardCase/ElementedCase → classe base; la classe d'una instància s'aplica a totes les del component (opció a Info); classificació assistida agrupa instàncies i filtra per origen.
+- [ ] **Validar amb un SKP real classificat amb SketchUp** (2021+ i anterior). Només s'ha provat amb fitxers sintètics escrits amb OpenSKP.
+- [ ] **Classe a la definició en fitxers antics (≤2020):** OpenSKP 1.7.0 només dona els atributs de definició en fitxers 2021+ (VFF); en fitxers antics només es llegeixen els de la instància.
+- [ ] **Exportació SKP:** escriure la classe a `AppliedSchemaTypes` perquè SketchUp la reconegui, i exportar components com a components (ara tot surt com a grups).
+- [ ] **Propietats IFC del SKP com a Psets editables** (ara només lectura).
+- [ ] **Instàncies imbricades:** només es reconeix l'origen del primer nivell; els components dins de grups queden fusionats al grup pare.
 
 ## v0.58.0 · SKP: arestes suaus i suavitzades
 - Es llegeixen les marques soft/smooth/hidden de les arestes del SKP (OpenSKP, definicions i instàncies imbricades) i s'etiqueten a l'import: soft/hidden → e.sf; smooth → e.sm (ombreig suau a través de l'aresta, sense dependre de l'angle).

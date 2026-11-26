@@ -21,6 +21,19 @@ function syncClass() {
   const n = pendingList().length, b = $('stPend'); b.textContent = n + ' sense classificar'; b.classList.toggle('zero', n === 0);
 }
 
+/* ---------- v0.60 · components del SKP: la classe s'aplica a totes les instàncies (com SketchUp) ---------- */
+if (S.skpAll == null) S.skpAll = true;
+function skpSiblings(g) { if (!g || !g.skp || g.skp.kind !== 'component' || !g.skp.defId) return []; const out = [];
+  (function w(c) { for (const x of c.groups.values()) { if (x !== g && x.skp && x.skp.kind === 'component' && x.skp.defId === g.skp.defId) out.push(x); w(x); } })(S.model.root); return out; }
+/* assigna la classe als grups i, si cal, a les altres instàncies dels components; retorna quantes instàncies extra s'han canviat */
+function setIfc(gs, k, only) {
+  let extra = 0; const done = new Set(gs);
+  for (const g of gs) { g.ifc = k || null; if (only || !S.skpAll) continue; for (const x of skpSiblings(g)) if (!done.has(x)) { done.add(x); x.ifc = k || null; extra++; } }
+  if (extra) toast('Classe aplicada també a ' + extra + ' instància(es) més del mateix component.');
+  return extra;
+}
+const skpKindTxt = g => !g.skp ? null : g.skp.kind === 'component' ? 'Component SKP «' + g.skp.def + '»' : g.skp.kind === 'group' ? 'Grup SKP' : 'Objecte SKP';
+
 /* ---------- grups sense classificar ---------- */
 /* Un grup compta com a pendent si té geometria pròpia i ni ell ni cap pare tenen classe. */
 function pendingList() {
@@ -68,32 +81,38 @@ function buildProposals(rules) {
     const nm = x.g.name || 'Grup ' + x.g.id, r = ruleFor(nm, rules);
     if (r) return { g: x.g, nm, k: r, src: 'nom' };
     const s = suggestByShape(x.g); return { g: x.g, nm, k: s, src: s ? 'forma' : '' };
-  });
+  }).reduce((L, p) => { /* v0.60: les instàncies d'un mateix component SKP fan una sola fila */
+    const k = p.g.skp && p.g.skp.kind === 'component' && S.skpAll ? p.g.skp.defId : null, q = k && L.find(o => o.def === k);
+    if (q) { q.gs.push(p.g); q.nm = q.base + ' ×' + q.gs.length; return L; }
+    p.gs = [p.g]; p.def = k; p.base = k ? (p.g.skp.def || p.nm) : p.nm; if (k) p.nm = p.base; L.push(p); return L; }, []);
 }
+const SKP_FLT = { all: 'Tots', comp: 'Components SKP', grp: 'Grups SKP', other: 'No SKP' };
+const skpFlt = (p, f) => f === 'all' || (f === 'comp' ? p.g.skp && p.g.skp.kind === 'component' : f === 'grp' ? p.g.skp && p.g.skp.kind !== 'component' : !p.g.skp);
 
 /* ---------- diàleg ---------- */
 function classDlg() {
-  const rules = loadRules(); let props = null;
+  const rules = loadRules(); let props = null, flt = 'all';
   const opts = sel => '<option value="">—</option>' + IFC.map(r => '<option value="' + r[0] + '"' + (r[0] === sel ? ' selected' : '') + '>' + esc(r[1]) + '</option>').join('');
   const box = $('dlgBox');
   const draw = () => {
     box.innerHTML = '<h3>Classificació assistida</h3><p class="dim" style="font-size:12.5px">Regles per nom (amb <b>*</b> i <b>?</b>) i, si cap no coincideix, suggeriment per forma. Res no s’aplica fins que ho confirmes.</p>'
       + '<div id="cRules">' + rules.map((r, i) => '<div class="rl"><input type="text" data-i="' + i + '" data-f="0" value="' + esc(r[0]) + '"><select data-i="' + i + '" data-f="1">' + opts(r[1]) + '</select><button class="btn sm" data-del="' + i + '" title="Elimina">✕</button></div>').join('') + '</div>'
       + '<div style="margin:6px 0 12px"><button class="btn sm" id="cAddR">Afegeix regla</button> <button class="btn sm" id="cDefR">Regles per defecte</button></div>'
-      + '<div style="margin-bottom:8px"><button class="btn sm acc" id="cCalc">Calcula proposta (' + pendingList().length + ' pendents)</button></div>'
+      + '<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm acc" id="cCalc">Calcula proposta (' + pendingList().length + ' pendents)</button><label style="font-size:12.5px">Origen <select id="cFlt">' + Object.keys(SKP_FLT).map(k => '<option value="' + k + '"' + (k === flt ? ' selected' : '') + '>' + SKP_FLT[k] + '</option>').join('') + '</select></label></div>'
       + '<div id="cProp">' + (props ? (props.length ? props.map((p, i) => '<div class="pr"><input type="checkbox" data-p="' + i + '"' + (p.on ? ' checked' : '') + '><span title="' + esc(p.nm) + '" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.nm) + '</span><select data-pk="' + i + '">' + opts(p.k) + '</select><span class="dim">' + p.src + '</span></div>').join('') : '<p class="dim">No hi ha grups pendents.</p>') : '') + '</div>'
       + '<div style="text-align:right;margin-top:10px"><button class="btn" id="cX">Tanca</button> <button class="btn acc" id="cApply"' + (props && props.some(p => p.on) ? '' : ' disabled') + '>Aplica les marcades</button></div>';
     box.querySelectorAll('#cRules input,#cRules select').forEach(e => e.onchange = () => { rules[+e.dataset.i][+e.dataset.f] = e.value; saveRules(rules); });
     box.querySelectorAll('[data-del]').forEach(e => e.onclick = () => { rules.splice(+e.dataset.del, 1); saveRules(rules); draw(); });
     $('cAddR').onclick = () => { rules.push(['', '']); draw(); };
     $('cDefR').onclick = () => { rules.length = 0; RULES_DEF.forEach(x => rules.push(x.slice())); saveRules(rules); draw(); };
-    $('cCalc').onclick = () => { props = buildProposals(rules).map(p => ({ ...p, on: !!p.k })); draw(); };
+    $('cCalc').onclick = () => { props = buildProposals(rules).filter(p => skpFlt(p, flt)).map(p => ({ ...p, on: !!p.k })); draw(); };
+    $('cFlt').onchange = e => { flt = e.target.value; if (props) props = buildProposals(rules).filter(p => skpFlt(p, flt)).map(p => ({ ...p, on: !!p.k })); draw(); };
     box.querySelectorAll('[data-p]').forEach(e => e.onchange = () => { props[+e.dataset.p].on = e.checked; $('cApply').disabled = !props.some(p => p.on && p.k); });
     box.querySelectorAll('[data-pk]').forEach(e => e.onchange = () => { const p = props[+e.dataset.pk]; p.k = e.value || null; p.src = p.k ? 'manual' : ''; });
     $('cX').onclick = () => $('dlg').classList.remove('show');
     const ap = $('cApply'); if (ap) ap.onclick = () => {
       const todo = props.filter(p => p.on && p.k); if (!todo.length) return;
-      pushUndo(); todo.forEach(p => { p.g.ifc = p.k; }); $('dlg').classList.remove('show'); refreshAll(); toast(todo.length + ' grups classificats.');
+      pushUndo(); let n = 0; todo.forEach(p => { (p.gs || [p.g]).forEach(g => { g.ifc = p.k; n++; }); }); $('dlg').classList.remove('show'); refreshAll(); toast(n + ' grups classificats.');
     };
   };
   draw(); $('dlg').classList.add('show');

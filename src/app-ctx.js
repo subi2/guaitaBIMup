@@ -21,7 +21,7 @@ function openCtx(ev, mx, my) {
   const lvSub = fn => L.map(l => ({ l: l.name + '  ' + fmtElev(l.elev), f: () => fn(l) }));
   if (P === 'group' || (gs.length && P !== 'face' && P !== 'edge')) {
     items.push({ l: 'Edita el grup', sc: 'Intro', f: () => { if (gs[0]) { S.ctx.push(gs[0].id); clearSel(); refreshAll(); } } }, { l: 'Explota el grup', f: doExplode }, { sep: 1 });
-    items.push({ l: 'Classe IFC', sub: [{ l: '— sense classificar (esbós)', f: () => { pushUndo(); gs.forEach(g => g.ifc = null); refreshAll(); } }, ...IFC.map(r => ({ l: r[1] + '  ·  ' + r[0], f: () => { pushUndo(); gs.forEach(g => g.ifc = r[0]); refreshAll(); }, ck: () => gs.length && gs.every(g => g.ifc === r[0]) }))] });
+    items.push({ l: 'Classe IFC', sub: [{ l: '— sense classificar (esbós)', f: () => { pushUndo(); setIfc(gs, null); refreshAll(); } }, ...IFC.map(r => ({ l: r[1] + '  ·  ' + r[0], f: () => { pushUndo(); setIfc(gs, r[0]); refreshAll(); }, ck: () => gs.length && gs.every(g => g.ifc === r[0]) }))] });
     items.push({ l: 'Assigna al nivell', sub: lvSub(l => { pushUndo(); gs.forEach(g => g.level = l.id); refreshAll(); toast('Assignat a ' + l.name + '.'); }) });
     items.push({ l: 'Etiqueta', sub: S.model.tags.map(t => ({ l: t.name, f: () => { pushUndo(); gs.forEach(g => g.tag = t.id); refreshAll(); }, ck: () => gs.length && gs.every(g => g.tag === t.id) })) }, { sep: 1 });
     if (gs.length >= 2) items.push({ l: 'Sòlids (booleanes)', sub: BOOL_ITEMS() });
